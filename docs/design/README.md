@@ -14,6 +14,7 @@ This package defines a faithful-but-original fixed-screen maze shooter inspired 
 3. [Storyboards](./03-storyboards.md) — four six-panel experience sequences with visual sheets and panel-level intent.
 4. [Decision log](./04-decision-log.md) — settled decisions, assumptions, unresolved questions, and suggested next research.
 5. [Storyboard generation prompts](./assets/storyboards/PROMPTS.md) — provenance and reproducible prompts for the concept sheets.
+6. [Production asset package](../../assets/README.md) — complete sprites, maze tiles, HUD, VFX, screens, SFX, openly licensed music, font, manifests, and source provenance.
 
 ## Package map
 
@@ -32,6 +33,8 @@ docs/design/
     └── sb-04-pit-and-sorcerer.png
 ```
 
+The production-facing files live in the repository-level `assets/` directory so future implementation can consume them without coupling runtime content to design documentation.
+
 ## Product thesis
 
 The game should feel understandable in ten seconds and strategically tense for years. Its distinctiveness comes from five interacting constraints:
@@ -47,4 +50,3 @@ This is the experience contract. Visual nostalgia is useful, but it is not a sub
 ## IP posture
 
 “Project Worbound” and all proposed character names are placeholders. The reference game’s title, named characters, original sprites, speech recordings, musical phrases, cabinet art, and exact copy should not be shipped without a license and legal review. The GDD therefore separates documented reference behavior from original presentation decisions.
-

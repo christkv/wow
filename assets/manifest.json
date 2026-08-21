@@ -1,0 +1,86 @@
+{
+  "project": "Project Worbound",
+  "package_version": "1.0.0-preproduction",
+  "created": "2026-08-21",
+  "coordinate_system": {
+    "origin": "top-left",
+    "indices": "zero-based",
+    "texture_filtering": "nearest-neighbor"
+  },
+  "art": {
+    "rights": "Project-original; distribution license to be chosen by project owner",
+    "character_atlases": {
+      "sheet_size": [1256, 1256],
+      "grid": [4, 4],
+      "cell_size": [314, 314],
+      "row_directions": ["south", "east", "north", "west"],
+      "sheets": [
+        {"id": "delver-gold", "file": "art/sprites/delver-gold.png", "columns": ["idle", "walk-a", "walk-b", "fire"]},
+        {"id": "delver-cyan", "file": "art/sprites/delver-cyan.png", "columns": ["idle", "walk-a", "walk-b", "fire"]},
+        {"id": "prowler", "file": "art/sprites/prowler.png", "columns": ["idle", "scuttle-a", "scuttle-b", "fire"]},
+        {"id": "veilmaw", "file": "art/sprites/veilmaw.png", "columns": ["stalk-a", "stalk-b", "fire", "cloak"]},
+        {"id": "ravager", "file": "art/sprites/ravager.png", "columns": ["sprint-a", "sprint-b", "fire", "cloak"]},
+        {"id": "riftwing", "file": "art/sprites/riftwing.png", "columns": ["flap-closed", "flap-half", "flap-open", "dash"]},
+        {"id": "gaoler", "file": "art/sprites/gaoler.png", "columns": ["materialize", "hover", "cast", "dematerialize"]}
+      ],
+      "split_frame_count": 112,
+      "split_frame_pattern": "art/sprites/frames/<actor>/<direction>-<state>.png"
+    },
+    "grid_atlases": {
+      "sheet_size": [1256, 1256],
+      "grid": [8, 8],
+      "cell_size": [157, 157],
+      "sheets": [
+        {"id": "maze-tiles", "file": "art/tiles/maze-tiles.png", "split_pattern": "art/tiles/cells/tile-r<row>-c<column>.png"},
+        {"id": "hud-icons", "file": "art/ui/hud-icons.png", "split_pattern": "art/ui/icons/icon-r<row>-c<column>.png"},
+        {"id": "game-effects", "file": "art/vfx/game-effects.png", "split_pattern": "art/vfx/frames/vfx-r<row>-c<column>.png"}
+      ],
+      "split_cell_count_per_sheet": 64
+    },
+    "screens": [
+      {"id": "attract-screen", "file": "art/screens/attract-screen.png", "size": [1696, 954]},
+      {"id": "attract-background", "file": "art/screens/attract-background.png", "size": [1696, 954]},
+      {"id": "gameplay-reference", "file": "art/screens/gameplay-reference.png", "size": [1696, 954]}
+    ],
+    "identity": {
+      "title_svg": "art/ui/title-logo.svg",
+      "title_png": "art/ui/title-logo.png",
+      "title_png_size": [1696, 360],
+      "palette": "art/worbound-palette.gpl",
+      "prompt_record": "art/IMAGEGEN_PROMPTS.md"
+    }
+  },
+  "audio": {
+    "sfx": {
+      "rights": "Project-original; distribution license to be chosen by project owner",
+      "count": 50,
+      "directory": "audio/sfx",
+      "manifest": "audio/sfx/manifest.json",
+      "format": "WAV PCM S16LE, 44100 Hz, stereo",
+      "generator": "../tools/asset_generation/generate_sfx.py"
+    },
+    "music": {
+      "license": "CC0-1.0",
+      "runtime": [
+        {"role": "attract-intro", "file": "audio/music/attract-intro.ogg"},
+        {"role": "attract-loop", "file": "audio/music/attract-loop.ogg"},
+        {"role": "dungeon-loop", "file": "audio/music/dungeon-loop.ogg", "source_copy": "audio/music/dungeon-loop.mp3"},
+        {"role": "gaoler-loop", "file": "audio/music/gaoler-loop.ogg"},
+        {"role": "pit-climax-loop", "file": "audio/music/pit-climax-loop.ogg"}
+      ],
+      "source_directory": "audio/music/source",
+      "provenance": "licenses/THIRD_PARTY_ASSETS.md"
+    }
+  },
+  "font": {
+    "family": "Press Start 2P",
+    "file": "fonts/PressStart2P-Regular.ttf",
+    "license": "OFL-1.1",
+    "license_file": "fonts/OFL.txt"
+  },
+  "build_tools": [
+    "../tools/asset_generation/generate_sfx.py",
+    "../tools/asset_generation/split_atlases.sh",
+    "../tools/asset_generation/validate_assets.py"
+  ]
+}

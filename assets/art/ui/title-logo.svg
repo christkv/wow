@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1696" height="360" viewBox="0 0 1696 360">
+  <defs>
+    <style>
+      @font-face {
+        font-family: "Press Start 2P";
+        src: url("../../fonts/PressStart2P-Regular.ttf") format("truetype");
+      }
+      .title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 92px;
+        letter-spacing: 2px;
+        text-anchor: middle;
+      }
+    </style>
+  </defs>
+  <g shape-rendering="crispEdges">
+    <path d="M848 24 L888 64 L848 104 L808 64 Z" fill="#040713" stroke="#7540d8" stroke-width="12"/>
+    <path d="M848 42 L870 64 L848 86 L826 64 Z" fill="#19dcff"/>
+    <text x="856" y="246" class="title" fill="#27105f" stroke="#27105f" stroke-width="18">PROJECT WORBOUND</text>
+    <text x="848" y="238" class="title" fill="#ffca28" stroke="#ff7a00" stroke-width="4">PROJECT WORBOUND</text>
+    <path d="M228 290 H1468" stroke="#0b66c3" stroke-width="12"/>
+    <path d="M292 290 H1404" stroke="#19dcff" stroke-width="4"/>
+    <path d="M196 290 L228 258 L260 290 L228 322 Z" fill="#ffca28" stroke="#ff7a00" stroke-width="4"/>
+    <path d="M1436 290 L1468 258 L1500 290 L1468 322 Z" fill="#19dcff" stroke="#0b66c3" stroke-width="4"/>
+  </g>
+</svg>

@@ -1,0 +1,505 @@
+{
+  "generator": "generate_sfx.py",
+  "assets": [
+    {
+      "file": "arena-sting.wav",
+      "category": "stage",
+      "purpose": "Arena milestone announced",
+      "duration_seconds": 1.1,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "bonus-life.wav",
+      "category": "score",
+      "purpose": "Bonus life awarded",
+      "duration_seconds": 0.6,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "cloak.wav",
+      "category": "enemy",
+      "purpose": "Enemy cloaks",
+      "duration_seconds": 0.55,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "double-active.wav",
+      "category": "score",
+      "purpose": "Double score activates now",
+      "duration_seconds": 0.9,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "double-armed.wav",
+      "category": "score",
+      "purpose": "Next-dungeon double score armed",
+      "duration_seconds": 0.52,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "dungeon-start.wav",
+      "category": "stage",
+      "purpose": "Standard dungeon begins",
+      "duration_seconds": 0.56,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "enemy-fire.wav",
+      "category": "weapon",
+      "purpose": "Regular enemy fires",
+      "duration_seconds": 0.22,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "entry-forced.wav",
+      "category": "entry",
+      "purpose": "Countdown expires and entry is forced",
+      "duration_seconds": 0.225,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "entry-release.wav",
+      "category": "entry",
+      "purpose": "Delver leaves protected alcove",
+      "duration_seconds": 0.24,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "entry-tick.wav",
+      "category": "entry",
+      "purpose": "Re-entry countdown tick",
+      "duration_seconds": 0.07,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "friendly-fire.wav",
+      "category": "impact",
+      "purpose": "Partner shot destroys a Delver",
+      "duration_seconds": 0.27,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "game-over.wav",
+      "category": "stage",
+      "purpose": "Run ends",
+      "duration_seconds": 1.65,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-hit.wav",
+      "category": "gaoler",
+      "purpose": "Gaoler is struck",
+      "duration_seconds": 0.38,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-imminent-loop.wav",
+      "category": "loop",
+      "purpose": "Gaoler warning ambience",
+      "duration_seconds": 1.2,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-laugh.wav",
+      "category": "gaoler",
+      "purpose": "Synthetic non-verbal laugh motif",
+      "duration_seconds": 0.66,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-lightning.wav",
+      "category": "gaoler",
+      "purpose": "Gaoler lightning bolt",
+      "duration_seconds": 0.58,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-teleport-in.wav",
+      "category": "gaoler",
+      "purpose": "Gaoler materializes",
+      "duration_seconds": 0.72,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-teleport-out.wav",
+      "category": "gaoler",
+      "purpose": "Gaoler dematerializes",
+      "duration_seconds": 0.5,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gaoler-voice-sting.wav",
+      "category": "gaoler",
+      "purpose": "Non-verbal synthetic host vocal",
+      "duration_seconds": 0.85,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gate-hum-loop.wav",
+      "category": "loop",
+      "purpose": "Open warp gate ambience",
+      "duration_seconds": 1.0,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gate-open.wav",
+      "category": "gate",
+      "purpose": "Warp gate opens",
+      "duration_seconds": 0.5,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gate-seal.wav",
+      "category": "gate",
+      "purpose": "Warp gate seals",
+      "duration_seconds": 0.2,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "gate-traverse.wav",
+      "category": "gate",
+      "purpose": "Entity traverses warp gate",
+      "duration_seconds": 0.36,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "impact-creature.wav",
+      "category": "impact",
+      "purpose": "Regular creature destroyed",
+      "duration_seconds": 0.22,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "impact-wall.wav",
+      "category": "impact",
+      "purpose": "Projectile hits wall",
+      "duration_seconds": 0.13,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "personal-best.wav",
+      "category": "score",
+      "purpose": "New personal best",
+      "duration_seconds": 0.77,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "pit-sting.wav",
+      "category": "stage",
+      "purpose": "Pit milestone announced",
+      "duration_seconds": 1.2,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "player-death.wav",
+      "category": "player",
+      "purpose": "Non-gory starburst death",
+      "duration_seconds": 0.72,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "player-fire-cyan.wav",
+      "category": "weapon",
+      "purpose": "Cyan Delver fires",
+      "duration_seconds": 0.18,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "player-fire-gold.wav",
+      "category": "weapon",
+      "purpose": "Gold Delver fires",
+      "duration_seconds": 0.18,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "player-step.wav",
+      "category": "player",
+      "purpose": "One movement pulse",
+      "duration_seconds": 0.055,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "projectile-cancel.wav",
+      "category": "impact",
+      "purpose": "Two projectiles cancel",
+      "duration_seconds": 0.16,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "prowler-voice.wav",
+      "category": "enemy",
+      "purpose": "Prowler vocalization",
+      "duration_seconds": 0.28,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ravager-voice.wav",
+      "category": "enemy",
+      "purpose": "Ravager vocalization",
+      "duration_seconds": 0.34,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "reveal.wav",
+      "category": "enemy",
+      "purpose": "Cloaked enemy reveals",
+      "duration_seconds": 0.3,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "riftwing-caught.wav",
+      "category": "riftwing",
+      "purpose": "Riftwing captured; next double armed",
+      "duration_seconds": 0.76,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "riftwing-escaped.wav",
+      "category": "riftwing",
+      "purpose": "Riftwing escapes",
+      "duration_seconds": 0.7,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "riftwing-flap.wav",
+      "category": "riftwing",
+      "purpose": "Wing pulse",
+      "duration_seconds": 0.14,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "riftwing-spawn.wav",
+      "category": "riftwing",
+      "purpose": "Riftwing phase starts",
+      "duration_seconds": 0.65,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "score-large.wav",
+      "category": "score",
+      "purpose": "500+ point event",
+      "duration_seconds": 0.18,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "score-small.wav",
+      "category": "score",
+      "purpose": "100/200 point event",
+      "duration_seconds": 0.09,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "shot-ready.wav",
+      "category": "weapon",
+      "purpose": "Weapon becomes ready",
+      "duration_seconds": 0.09,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "transform.wav",
+      "category": "enemy",
+      "purpose": "Tier replacement transformation",
+      "duration_seconds": 0.55,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ui-cancel.wav",
+      "category": "ui",
+      "purpose": "Cancel/back",
+      "duration_seconds": 0.14,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ui-confirm.wav",
+      "category": "ui",
+      "purpose": "Confirm/select",
+      "duration_seconds": 0.225,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ui-error.wav",
+      "category": "ui",
+      "purpose": "Unavailable action",
+      "duration_seconds": 0.21,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ui-move.wav",
+      "category": "ui",
+      "purpose": "Menu focus moves",
+      "duration_seconds": 0.09,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "ui-pause.wav",
+      "category": "ui",
+      "purpose": "Pause toggled",
+      "duration_seconds": 0.12,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "veilmaw-voice.wav",
+      "category": "enemy",
+      "purpose": "Veilmaw vocalization",
+      "duration_seconds": 0.38,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    },
+    {
+      "file": "weapon-live-loop.wav",
+      "category": "loop",
+      "purpose": "Subtle one-shot-in-flight loop",
+      "duration_seconds": 0.8,
+      "sample_rate": 44100,
+      "channels": 2,
+      "format": "PCM_S16LE",
+      "rights": "Project-original; distribution license to be chosen by project owner"
+    }
+  ]
+}
