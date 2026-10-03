@@ -130,3 +130,4 @@ npm run test:browser -- tests/browser/combat-lab.spec.ts --project=chromium
 ## Architecture
 
 Game rules run in a framework-independent fixed-tick simulation under `src/game/`. Phaser scenes render snapshots and translate browser input/audio into commands and effects. The simulation uses a seeded PRNG and can be regression-tested with deterministic world hashes.
+# wow
