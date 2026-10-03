@@ -5,7 +5,7 @@
 **Working title:** Project Worbound  
 **Reference target:** The 1980-copyright / 1981 arcade release of *Wizard of Wor*
 
-This package defines a faithful-but-original fixed-screen maze shooter inspired by the classic arcade game. It deliberately concentrates on player experience, rules, pacing, presentation, and validation. Engine, networking, architecture, and production implementation are outside this phase.
+This package defines a faithful-but-original fixed-screen maze shooter inspired by the classic arcade game. Documents 01–04 establish player experience, rules, pacing, presentation, and validation; document 05 establishes the recommended browser implementation and rollout architecture.
 
 ## Read in this order
 
@@ -15,6 +15,7 @@ This package defines a faithful-but-original fixed-screen maze shooter inspired 
 4. [Decision log](./04-decision-log.md) — settled decisions, assumptions, unresolved questions, and suggested next research.
 5. [Storyboard generation prompts](./assets/storyboards/PROMPTS.md) — provenance and reproducible prompts for the concept sheets.
 6. [Production asset package](../../assets/README.md) — complete sprites, maze tiles, HUD, VFX, screens, SFX, openly licensed music, font, manifests, and source provenance.
+7. [Technical implementation plan](./05-technical-implementation-plan.md) — browser stack, deterministic architecture, keyboard/controller support, content pipeline, testing, deployment, milestones, and launch gates.
 
 ## Package map
 
@@ -25,6 +26,7 @@ docs/design/
 ├── 02-game-design-document.md
 ├── 03-storyboards.md
 ├── 04-decision-log.md
+├── 05-technical-implementation-plan.md
 └── assets/storyboards/
     ├── PROMPTS.md
     ├── sb-01-first-ninety-seconds.png

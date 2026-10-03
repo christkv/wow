@@ -107,6 +107,16 @@ def main() -> None:
         check_png(ASSETS / "art" / "screens" / f"{name}.png", (1696, 954), {"RGB", "RGBA"})
     check_png(ASSETS / "art" / "ui" / "title-logo.png", (1696, 360), {"RGBA"})
 
+    runtime = ASSETS / "runtime" / "web"
+    for name in sprite_names:
+        check_png(runtime / "sprites" / f"{name}.png", (256, 256), {"RGBA"})
+    check_png(runtime / "screens" / "attract-screen.png", (640, 360), {"RGB", "RGBA"})
+    runtime_cues = sorted((runtime / "audio").glob("*.ogg"))
+    runtime_aac = sorted((runtime / "audio").glob("*.m4a"))
+    require(len(runtime_cues) == 17, f"Expected 17 Vorbis runtime cues, found {len(runtime_cues)}")
+    require(len(runtime_aac) == 19, f"Expected 17 AAC cue fallbacks plus 2 AAC music fallbacks, found {len(runtime_aac)}")
+    require(all(duration_seconds(path) > 0.05 for path in [*runtime_cues, *runtime_aac]), "Runtime audio is missing or implausibly short")
+
     required_text = [
         ASSETS / "README.md",
         ASSETS / "art" / "README.md",
@@ -139,6 +149,7 @@ def main() -> None:
     print("PASS: 7 actor atlases / 112 actor frames")
     print("PASS: 3 grid atlases / 192 split cells")
     print("PASS: 3 screens + title identity + palette + font")
+    print("PASS: 7 web atlases + web attract screen + dual-codec runtime audio")
     print("PASS: 50 stereo PCM SFX with non-silent normalized signal")
     print("PASS: 6 runtime music files / 5 retained source files")
     print("Music durations:", json.dumps(durations, sort_keys=True))

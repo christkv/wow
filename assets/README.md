@@ -16,7 +16,7 @@ This package supplies the first complete visual and audio vocabulary for Project
 | VFX | 1 transparent 8×8 effects atlas and 64 split cells |
 | Screens | composed attract screen, title-free background, gameplay reference |
 | Identity | editable SVG logo, PNG logo, 15-color palette, OFL pixel font |
-| SFX | 50 original procedural stereo WAV cues with per-file manifest |
+| SFX | 50 original procedural stereo WAV cues with per-file manifest; 17 selected runtime cues in Ogg and AAC |
 | Music | 5 runtime roles/filesets from 3 CC0 works, with source masters retained |
 
 ## Start here
@@ -43,6 +43,7 @@ assets/
 │   ├── sfx/            # 50 WAV cues + detailed manifest
 │   └── music/          # runtime music + original downloads
 ├── fonts/              # Press Start 2P + OFL text
+├── runtime/web/        # generated, deployment-sized images and Ogg/AAC cue pairs
 └── licenses/           # third-party notices
 ```
 
@@ -59,10 +60,11 @@ assets/
 ```sh
 python3 tools/asset_generation/generate_sfx.py
 ./tools/asset_generation/split_atlases.sh
+./tools/asset_generation/build_web_assets.sh
 python3 tools/asset_generation/validate_assets.py
 ```
 
-The first command regenerates deterministic SFX; the second rebuilds split cells; the third validates dimensions, counts, formats, audio signal, and required provenance files.
+The first command regenerates deterministic SFX; the second rebuilds split cells; the third creates deployment-sized web derivatives and dual-codec runtime audio; the fourth validates dimensions, counts, formats, codec coverage, audio signal, and required provenance files.
 
 ## Rights summary
 
