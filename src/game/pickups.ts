@@ -4,11 +4,14 @@ import { TILE_SIZE, type GameEvent, type PickupEffectKind, type PickupOutcome, t
 
 export const PICKUP_RULES = {
   effectTicks: 480, cursedEffectTicks: 720, bombTicks: 600, cursedBombTicks: 900,
-  boxTicks: 600, bruteWarningTicks: 60, bruteTicks: 720, bruteHealth: 3,
+  bruteWarningTicks: 60, bruteTicks: 720, bruteHealth: 3,
+  rapidIntervalTicks: 6, rapidShotLimit: 4,
+  burstIntervalTicks: 6, ricochetBounces: 2,
   bombRadius: 48, bruteSpeed: 0.65, cursedChance: 0.25, bruteChance: 0.5
 } as const;
 export const EFFECT_LABELS: Record<PickupEffectKind, string> = {
-  twin: "TWIN SHOT", piercing: "PIERCING", bomb: "BOMB READY", shield: "SHIELD"
+  twin: "TWIN SHOT", piercing: "PIERCING", bomb: "BOMB READY", shield: "SHIELD",
+  crossfire: "CROSSFIRE", burst: "BURST", ricochet: "RICOCHET", speed: "DOUBLE SPEED", rapid: "RAPID FIRE"
 };
 const distance2 = (a: Vector, b: Vector): number => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 
@@ -34,7 +37,9 @@ export function activeEffect(world: WorldState, owner: PlayerId, kind: PickupEff
 }
 export function canPlayerFire(world: WorldState, owner: PlayerId): boolean {
   const count = world.projectiles.filter(p => p.ownerType === "player" && p.ownerId === owner && p.ttlTicks > 0).length;
-  return count < (activeEffect(world, owner, "twin") ? 2 : 1);
+  if (world.pickups.effect?.owner === owner && world.pickups.effect.burst) return false;
+  if (activeEffect(world, owner, "rapid")) return count < PICKUP_RULES.rapidShotLimit && world.tick >= (world.pickups.effect!.rapidNextTick ?? 0);
+  return count < (activeEffect(world, owner, "twin") || activeEffect(world, owner, "ricochet") ? 2 : 1);
 }
 
 /** Floor cells in the living players' connected component; no gate teleport dependency. */
@@ -59,7 +64,7 @@ export function pickupSpawnCandidates(world: WorldState, clearance = 48): Vector
 }
 export function rollPickup(state: PickupState, cursed: boolean): PickupOutcome {
   if (cursed && pickupRandom(state) < PICKUP_RULES.bruteChance) return "brute";
-  const rewards: readonly PickupEffectKind[] = ["twin", "piercing", "bomb", "shield"];
+  const rewards: readonly PickupEffectKind[] = ["twin", "piercing", "bomb", "shield", "crossfire", "burst", "ricochet", "speed", "rapid"];
   return rewards[Math.floor(pickupRandom(state) * rewards.length)]!;
 }
 
@@ -76,7 +81,6 @@ export function updatePickups(world: WorldState, events: GameEvent[]): void {
   }
   if (state.brute) return;
   if (state.box) {
-    if (--state.box.ticks <= 0) { state.box = null; return; }
     // In solo the companion leaves the decision and reward to the human player.
     const collector = Object.values(world.players).find(p => p.alive && !(world.mode === "solo" && p.id === "cyan") && distance2(p, state.box!) <= 9 ** 2);
     if (!collector) return;
@@ -106,7 +110,7 @@ export function updatePickups(world: WorldState, events: GameEvent[]): void {
   if (!candidates.length) { state.nextSpawnTicks = 60; return; }
   const spawn = candidates[Math.floor(pickupRandom(state) * candidates.length)]!;
   const cursed = pickupRandom(state) < PICKUP_RULES.cursedChance;
-  state.box = { ...spawn, kind: cursed ? "cursed" : "supply", outcome: rollPickup(state, cursed), ticks: PICKUP_RULES.boxTicks };
+  state.box = { ...spawn, kind: cursed ? "cursed" : "supply", outcome: rollPickup(state, cursed) };
   state.nextSpawnTicks = 480 + Math.floor(pickupRandom(state) * 241);
   events.push({ type: "box-spawn", x: spawn.x, y: spawn.y });
 }
@@ -152,6 +156,6 @@ export function pickupStatus(world: WorldState): string {
   const { box, effect, brute } = world.pickups;
   if (effect) return `${effect.owner.toUpperCase()} ${EFFECT_LABELS[effect.kind]} ${Math.ceil(effect.ticks / 60)}s${effect.kind === "bomb" ? ` · ${effect.owner === "gold" ? "E" : "RSHIFT"} / PAD B` : ""}`;
   if (brute) return brute.arrivalTicks > 0 ? "BRUTE INCOMING · KEEP CLEAR" : `BRUTE ${brute.health}/3 HP · ${Math.ceil(brute.ticks / 60)}s · OPTIONAL +${1000 * world.multiplier}`;
-  if (box) return `MYSTERY BOX · ${Math.ceil(box.ticks / 60)}s · REWARD OR MONSTER?`;
+  if (box) return "MYSTERY BOX · REWARD OR MONSTER?";
   return "MYSTERY BOXES · REWARDS OR MONSTERS";
 }

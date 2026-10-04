@@ -25,7 +25,7 @@ Open <http://127.0.0.1:4173/>.
 
 Press `O` on the title screen for persisted audio/accessibility options. Press `X` to toggle fullscreen, `R` to restart a run, and `M` to return to the mode screen. After losing a life, press Fire to re-enter immediately or wait for the three-second fallback.
 
-The menu supports mouse, keyboard, and controller selection. Solo mode gives the cyan Delver to the companion AI. Alliance disables friendly fire; Classic enables it. Ten standard mazes, the Arena milestone, and the recurring Pit feed an endless run.
+The menu supports mouse, keyboard, and controller selection. Solo mode gives the cyan Delver to the companion AI. Friendly fire defaults on in Solo, Alliance, and Classic; disable it in Options for safe co-op. Classic awards points for ally kills; Solo and Alliance do not. Ten standard mazes, the Arena milestone, and the recurring Pit feed an endless run.
 
 ## Verify and build
 
@@ -139,29 +139,46 @@ Boxes now spawn during ordinary combat on reachable empty floor, at least 48 pix
 from living players, 32 pixels from entry points, and 24 pixels from enemies. The
 first box appears after 6–10 seconds of combat. One box or active effect/encounter
 is allowed at a time; after it ends, the next box takes 8–12 seconds. Uncollected
-boxes disappear after 10 seconds. Items use a separate seeded random stream from
+boxes stay until collected or the wave ends; there is no pickup deadline. Items use a separate seeded random stream from
 enemy AI, so replay includes the same locations, rewards, and timers.
 
 Every unopened box has the same blue chest sprite, HUD label, and radar marker.
 Its internal roll stays hidden until collection. The existing odds are preserved:
 75% ordinary rewards, 12.5% longer rewards, and 12.5% brute encounters. Rewards
-choose equally between twin shot, piercing, bomb, and shield. Only the collector
+choose equally between twin shot, piercing, crossfire, burst, ricochet, double speed, rapid fire, bomb, and shield. Only the collector
 receives the benefit; both players face a summoned brute. In Solo, Cyan leaves
 boxes for Gold.
-- **Twin shot:** two simultaneous shots for 8 seconds, with unchanged speed and
+- **Twin shot:** two live shot slots for 8 seconds, with unchanged speed and
   no automatic firing. On expiration existing bullets finish, and the ordinary
   one-shot limit resumes.
 - **Piercing:** for 8 seconds, new shots pass through enemies, hitting each entity
   at most once, even across transformations. Walls and projectile collisions
   still stop them. Already-fired bolts retain piercing until they expire.
+- **Crossfire:** one press fires north, east, south, and west simultaneously for
+  8 seconds. The next volley waits for all four bolts to clear. Each bolt respects walls.
+- **Burst:** one press releases three shots 0.1 seconds apart for 8 seconds.
+  The burst keeps its initial aim while shots originate at your current position.
+  Pending shots stop on expiration, death, or wave completion; firing another burst
+  waits for the previous shots to clear.
+- **Ricochet:** for 8 seconds, bolts bounce back off walls twice and disappear on
+  the third impact or after three seconds. Two live shots are allowed. Returning
+  bolts cannot hit their owner, but can hit an ally when Friendly Fire is on.
+  Already-fired bolts keep their bounce allowance when the reward expires.
+- **Double speed:** doubles only the collector's movement from 75 to 150 logical
+  pixels per second for 8 seconds. Aim-only turning, walls, and gate rules still apply;
+  bullet and enemy speeds are unchanged.
+- **Rapid fire:** hold your fire key or the controller's south face button for
+  one shot every 0.1 seconds, with at most four shots alive at once, for 8 seconds.
+  Bullet speed stays unchanged. Releasing stops automatic fire; expiration returns
+  to ordinary press-to-fire behavior after existing shots clear.
 - **Bomb:** one manually detonated charge, usable for 10 seconds. Press E for Gold,
   Right Shift for Cyan, or the controller's east face button. A 48-pixel blast
   damages each exposed enemy once and clears exposed hostile bullets; walls
-  block it and all players are safe, including in Classic. It cannot skip all
+  block it. The owner is safe; allies take damage when Friendly Fire is on. It cannot skip all
   transformation stages in a single hit.
 - **Shield:** absorbs one hit or expires after 8 seconds; absorbing a hit grants
   half a second of invulnerability to escape contact.
-- **Longer rewards:** 12 seconds for weapons/shield; 15 seconds to use a bomb.
+- **Longer rewards:** 12 seconds for weapons, speed, and shield; 15 seconds to use a bomb.
 - **Brute:** a corridor-sized armored hunter with three health, moving at 39 px/s.
   A one-second harmless arrival precedes twelve seconds of pursuit. It cannot
   shoot or cloak. Defeating it gives 1000 points (subject to the dungeon multiplier);
@@ -178,7 +195,7 @@ brute uses the animated Ravager art at corridor scale, with three health marks. 
 blast; reduced-flash mode lowers their intensity.
 
 Try <http://127.0.0.1:4173/collision-lab.html?scenario=pickup-twin> and select any
-of seven **Pickups /** scenarios or two **Effects /** scenarios. Outcomes are forced in the effect fixtures;
+of twelve **Pickups /** scenarios, two **Combat / friendly fire** comparisons, or two **Effects /** scenarios. Outcomes are forced in the effect fixtures;
 **seeded random spawn** uses the production spawn logic. Fire once, Detonate bomb,
 manual movement, exact stepping, and replay all use the real simulation.
 Existing collision/combat comparisons disable random boxes to isolate their subject.
@@ -210,6 +227,24 @@ size, and duration; there is no screen flash or camera shake.
 
 Use the lab's **Effects / enemy explosion** and **Effects / player hit** fixtures,
 plus **Reduced particles**, exact stepping, and replay to inspect the results.
+
+## Gameplay and CRT options
+
+Press **O** on the title screen to open Options. Settings are saved locally between visits. Random Maps and CRT default to **off**;
+Friendly Fire defaults to **on**. Gameplay settings apply to the next run.
+
+- **Friendly fire:** player bolts and bombs can kill the other player in Solo,
+  Alliance, and Classic. Turn it off for safe co-op; bolts then pass through allies.
+  Shields and respawn protection still work. Practice remains invulnerable. Classic
+  awards 1000 points per ally kill; the cooperative modes give no ally-kill points.
+- **Random maps:** each new run shuffles all twelve layouts, including the first
+  dungeon. Every layout appears once before reshuffling, with no consecutive
+  repeats across shuffles. Difficulty still follows the dungeon number. Attract
+  demos also use this setting. With it off, the original map sequence is preserved.
+- **CRT scanlines:** previews immediately across menus and gameplay, using static
+  scanlines with a 30% brightness boost and a small saturation boost. The effect
+  follows the canvas through resizing and fullscreen, without covering letterboxing
+  or intercepting input.
 
 ## Arcade attract mode
 

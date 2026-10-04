@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BOX_COLOR, BRUTE_TEXTURE, EFFECT_TEXTURE, bruteFrame } from "../presentation/art";
+import { BOX_COLOR, BRUTE_TEXTURE, EFFECT_TEXTURE, bruteFrame, weaponPixels } from "../presentation/art";
 import { PixelEffects } from "../presentation/pixel-effects";
 import { AudioDirector } from "../audio/audio-director";
 import { ATTRACT_DEMO_MS, ATTRACT_IDLE_MS, UserActivity, type HeldInput } from "../input/user-activity";
@@ -108,8 +108,8 @@ export class GameScene extends Phaser.Scene {
     this.riftwingSprite = null;
     this.gaolerSprite = null;
     this.fx.clear();
-    this.world = this.demo ? createDemoWorld(this.demoCycle) : createWorld({ mode: this.mode, seed: Date.now() & 0xffff_ffff });
     this.settings = loadSettings();
+    this.world = this.demo ? createDemoWorld(this.demoCycle, this.settings.randomMaps, this.settings.friendlyFire) : createWorld({ mode: this.mode, seed: Date.now() & 0xffff_ffff, randomMaps: this.settings.randomMaps, friendlyFire: this.settings.friendlyFire });
     this.browserInput = new BrowserInput();
     this.audioDirector = new AudioDirector(this, this.settings);
     if (!this.demo) this.audioDirector.startDungeonMusic();
@@ -318,6 +318,8 @@ export class GameScene extends Phaser.Scene {
       graphics.fillStyle(color, 1);
       if (projectile.ownerType === "player") {
         graphics.fillRect(x - (v.x ? 3 : 1), y - (v.y ? 3 : 1), v.x ? 6 : 2, v.y ? 6 : 2);
+        graphics.fillStyle(0xf4fbff, 1);
+        for (const [dx, dy, width, height] of weaponPixels(projectile.weapon)) graphics.fillRect(x + dx, y + dy, width, height);
       } else {
         graphics.fillTriangle(x, y - 3, x + 3, y, x, y + 3);
         graphics.fillTriangle(x, y - 3, x - 3, y, x, y + 3);
@@ -334,7 +336,6 @@ export class GameScene extends Phaser.Scene {
     if (box) {
       const x = MAZE_X + box.x, y = MAZE_Y + box.y;
       this.boxSprite.setPosition(Math.round(x), Math.round(y));
-      g.fillStyle(BOX_COLOR, 1); g.fillRect(x - 6, y + 8, Math.ceil(12 * box.ticks / 600), 1);
     }
     if (effect) {
       const owner = this.world.players[effect.owner], x = MAZE_X + owner.x, y = MAZE_Y + owner.y;
@@ -445,7 +446,7 @@ export class GameScene extends Phaser.Scene {
     this.itemIcon.setVisible(Boolean(effect));
     if (effect) this.itemIcon.setTexture(EFFECT_TEXTURE[effect.kind]).setDisplaySize(12, 12).setPosition(320 - this.pickupText.width / 2 - 10, 354);
     const spokenObjective = this.paused ? "PAUSED" : this.world.objective;
-    const status = `${this.demo ? "DEMO PLAY. Press any key or button to return to the title. " : ""}${spokenObjective}. Dungeon ${this.world.dungeon}. Gold score ${gold.score}. Cyan score ${cyan.score}. ${pickupMessage}.`;
+    const status = `${this.demo ? "DEMO PLAY. Press any key or button to return to the title. " : ""}${spokenObjective}. Dungeon ${this.world.dungeon}. Map ${this.world.maze.id}. Gold score ${gold.score}. Cyan score ${cyan.score}. ${pickupMessage}.`;
     if (status !== this.lastStatus) {
       const element = document.querySelector<HTMLElement>("#status");
       if (element) element.textContent = status;

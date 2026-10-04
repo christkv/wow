@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NEUTRAL_COMMAND, type PlayerCommand, type ProjectileState, type WorldState } from "../../src/game/model";
+import { NEUTRAL_COMMAND, type PickupEffectKind, type PlayerCommand, type ProjectileState, type WorldState } from "../../src/game/model";
 import { createWorld, stepWorld, worldHash } from "../../src/game/simulation";
 import { activeEffect, bombReaches, canPlayerFire, createPickups, pickupSpawnCandidates, rollPickup, updatePickups } from "../../src/game/pickups";
 import { MAZES } from "../../src/game/mazes";
@@ -14,7 +14,7 @@ function bullet(w: WorldState, patch: Partial<ProjectileState> = {}): Projectile
   const p: ProjectileState = { id: w.nextEntityId++, ownerType: "player", ownerId: "gold", x: 280, y: 120, direction: "east", speed: 0, ttlTicks: 180, ...patch };
   w.projectiles.push(p); return p;
 }
-function collect(kind: "twin" | "piercing" | "bomb" | "shield", cursed = false) {
+function collect(kind: PickupEffectKind, cursed = false) {
   const w = pickupFixture(kind, cursed); step(w); return w;
 }
 
@@ -33,8 +33,8 @@ describe("random boxes and collection", () => {
       supply.add(rollPickup(state, false));
       const outcome = rollPickup(state, true); cursed.set(outcome, (cursed.get(outcome) ?? 0) + 1);
     }
-    expect([...supply].sort()).toEqual(["bomb", "piercing", "shield", "twin"]);
-    expect(cursed.size).toBe(5);
+    expect([...supply].sort()).toEqual(["bomb", "burst", "crossfire", "piercing", "rapid", "ricochet", "shield", "speed", "twin"]);
+    expect(cursed.size).toBe(10);
     expect(cursed.get("brute")).toBeGreaterThan(4700);
     expect(cursed.get("brute")).toBeLessThan(5300);
   });
@@ -62,10 +62,18 @@ describe("random boxes and collection", () => {
     w.players.gold.alive = false; w.pickups.nextSpawnTicks = 1; updatePickups(w, []);
     expect(w.pickups.box).toBeNull(); expect(w.pickups.nextSpawnTicks).toBe(60);
   });
-  it("ignores uncollected boxes after ten seconds and has no overlapping event", () => {
+  it("keeps uncollected boxes indefinitely without rerolling or spawning overlapping events", () => {
     const w = pickupFixture("twin"); w.pickups.box = { ...w.pickups.box!, x: 104 };
-    for (let i = 0; i < 599; i++) updatePickups(w, []);
-    expect(w.pickups.box).not.toBeNull(); updatePickups(w, []); expect(w.pickups.box).toBeNull();
+    w.pickups.nextSpawnTicks = 1;
+    const box = { ...w.pickups.box }, rng = w.pickups.rngState;
+    for (let i = 0; i < 36_000; i++) updatePickups(w, []);
+    expect(w.pickups.box).toEqual(box);
+    expect(w.pickups.rngState).toBe(rng); expect(w.pickups.nextSpawnTicks).toBe(1);
+    expect(w.pickups.effect).toBeNull(); expect(w.pickups.brute).toBeNull();
+    w.players.gold.x = box.x; w.players.gold.y = box.y;
+    updatePickups(w, []);
+    expect(w.pickups.box).toBeNull();
+    expect(w.pickups.effect).toMatchObject({ kind: "twin", owner: "gold", ticks: 480 });
     const active = collect("shield"); active.pickups.nextSpawnTicks = 1;
     for (let i = 0; i < 100; i++) updatePickups(active, []);
     expect(active.pickups.box).toBeNull(); expect(active.pickups.nextSpawnTicks).toBe(1);
@@ -74,7 +82,7 @@ describe("random boxes and collection", () => {
     for (const mode of ["solo", "alliance"] as const) {
       const w = createWorld({ mode, seed: 72 }); w.phase = "clear";
       Object.assign(w.players.cyan, { x: 100, y: 120 });
-      w.pickups.box = { x: 100, y: 120, kind: "supply", outcome: "twin", ticks: 600 };
+      w.pickups.box = { x: 100, y: 120, kind: "supply", outcome: "twin" };
       updatePickups(w, []);
       expect(w.pickups.effect?.owner).toBe(mode === "solo" ? undefined : "cyan");
     }
@@ -87,7 +95,7 @@ describe("random boxes and collection", () => {
     const dead = pickupFixture("shield"); dead.players.gold.alive = false; dead.players.gold.respawnTicks = 100;
     updatePickups(dead, []); expect(dead.pickups.effect).toBeNull();
   });
-  it.each(["twin", "piercing", "bomb", "shield"] as const)("expires %s on schedule and gives cursed rewards longer duration", kind => {
+  it.each(["twin", "piercing", "bomb", "shield", "crossfire", "burst", "ricochet", "speed", "rapid"] as const)("expires %s on schedule and gives cursed rewards longer duration", kind => {
     for (const cursed of [false, true]) {
       const w = collect(kind, cursed);
       const duration = kind === "bomb" ? cursed ? 900 : 600 : cursed ? 720 : 480;
@@ -110,6 +118,11 @@ describe("random boxes and collection", () => {
     const events: ReturnType<typeof step> = []; updatePickups(w, events);
     expect(w.pickups.brute).toBeNull(); expect(w.pickups.effect?.kind).toBe("shield");
     expect(events).toContainEqual(expect.objectContaining({ type: "box-collected", effect: "shield" }));
+  });
+  it("clears an uncollected box when the wave ends", () => {
+    const w = pickupFixture("twin"); w.pickups.box = { ...w.pickups.box!, x: 104 };
+    w.enemies = []; step(w);
+    expect(w.phase).toBe("riftwing"); expect(w.pickups.box).toBeNull();
   });
   it("disabled pickups never spawn", () => {
     const w = createWorld({ mode: "practice", pickups: false }); w.phase = "clear"; w.pickups.nextSpawnTicks = 1;
@@ -240,7 +253,7 @@ describe("optional brute encounter and replay", () => {
     }
   });
   it("clears rewards and boxes at wave end and resets on the next dungeon", () => {
-    for (const kind of ["twin", "piercing", "bomb", "shield"] as const) {
+    for (const kind of ["twin", "piercing", "bomb", "shield", "crossfire", "burst", "ricochet", "speed", "rapid"] as const) {
       const w = collect(kind); w.enemies = []; step(w);
       expect(w.pickups.effect).toBeNull(); expect(w.pickups.box).toBeNull();
       w.phase = "transition"; w.phaseTicks = 1; step(w);

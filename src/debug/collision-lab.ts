@@ -1,5 +1,5 @@
 import "./collision-lab.css";
-import { OBJECT_IMAGE_ASSETS, EFFECT_TEXTURE, bruteFrame } from "../presentation/art";
+import { OBJECT_IMAGE_ASSETS, EFFECT_TEXTURE, bruteFrame, weaponPixels } from "../presentation/art";
 import { PixelEffects } from "../presentation/pixel-effects";
 import { AUDIT_SEED, COLLISION_SCENARIOS, collisionBodies, overlapsWall } from "./collision-scenarios";
 import { DIRECTION_VECTOR, TILE_SIZE, type CombatProfile, type Direction, type PlayerCommand, type PlayerId } from "../game/model";
@@ -195,6 +195,8 @@ function render(): void {
     ctx.beginPath(); ctx.moveTo(p.x - v.x * 7, p.y - v.y * 7); ctx.lineTo(p.x, p.y); ctx.stroke();
     if (p.ownerType === "player") ctx.fillRect(p.x - (v.x ? 3 : 1), p.y - (v.y ? 3 : 1), v.x ? 6 : 2, v.y ? 6 : 2);
     else { ctx.beginPath(); ctx.moveTo(p.x, p.y - 3); ctx.lineTo(p.x + 3, p.y); ctx.lineTo(p.x, p.y + 3); ctx.lineTo(p.x - 3, p.y); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = "#f4fbff";
+    for (const [dx, dy, width, height] of weaponPixels(p.weapon)) ctx.fillRect(p.x + dx, p.y + dy, width, height);
   }
   const { box, effect, brute, blast } = world.pickups;
   const drawObject = (key: string, x: number, y: number, size: number): void => {
@@ -203,7 +205,6 @@ function render(): void {
   };
   if (box) {
     drawObject("mystery-box", box.x, box.y, 14);
-    ctx.fillStyle = "#19dcff"; ctx.fillRect(box.x - 6, box.y + 8, Math.ceil(12 * box.ticks / 600), 1);
   }
   if (effect) {
     const p = world.players[effect.owner]; drawObject(EFFECT_TEXTURE[effect.kind], p.x, p.y - 19, 10); ctx.strokeStyle = "#76e5cd"; ctx.lineWidth = 1;

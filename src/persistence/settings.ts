@@ -4,6 +4,9 @@ export interface GameSettings {
   readonly reducedFlash: boolean;
   readonly highContrastRadar: boolean;
   readonly haptics: boolean;
+  readonly friendlyFire: boolean;
+  readonly randomMaps: boolean;
+  readonly crtScanlines: boolean;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -11,7 +14,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.5,
   reducedFlash: false,
   highContrastRadar: false,
-  haptics: true
+  haptics: true,
+  friendlyFire: true,
+  randomMaps: false,
+  crtScanlines: false
 };
 
 const STORAGE_KEY = "worbound.settings.v1";
@@ -29,7 +35,10 @@ export function normalizeSettings(value: unknown): GameSettings {
     sfxVolume: volume(record.sfxVolume, DEFAULT_SETTINGS.sfxVolume),
     reducedFlash: typeof record.reducedFlash === "boolean" ? record.reducedFlash : DEFAULT_SETTINGS.reducedFlash,
     highContrastRadar: typeof record.highContrastRadar === "boolean" ? record.highContrastRadar : DEFAULT_SETTINGS.highContrastRadar,
-    haptics: typeof record.haptics === "boolean" ? record.haptics : DEFAULT_SETTINGS.haptics
+    haptics: typeof record.haptics === "boolean" ? record.haptics : DEFAULT_SETTINGS.haptics,
+    friendlyFire: typeof record.friendlyFire === "boolean" ? record.friendlyFire : DEFAULT_SETTINGS.friendlyFire,
+    randomMaps: typeof record.randomMaps === "boolean" ? record.randomMaps : DEFAULT_SETTINGS.randomMaps,
+    crtScanlines: typeof record.crtScanlines === "boolean" ? record.crtScanlines : DEFAULT_SETTINGS.crtScanlines
   };
 }
 

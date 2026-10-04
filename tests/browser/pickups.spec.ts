@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("mystery box, arrival warning, and brute timer replay deterministically", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
   await page.goto("/collision-lab.html?scenario=pickup-brute");
-  await expect(page.locator("#pickup-status")).toContainText("MYSTERY BOX · 10s · REWARD OR MONSTER?");
+  await expect(page.locator("#pickup-status")).toContainText("MYSTERY BOX · REWARD OR MONSTER?");
   await page.getByRole("button", { name: "+1 tick", exact: true }).click();
   await expect(page.locator("#pickup-status")).toContainText("BRUTE INCOMING");
   await page.screenshot({ path: test.info().outputPath("brute-arrival.png"), fullPage: true });
@@ -68,11 +68,11 @@ test("keyboard and controller bomb bindings emit a single press edge", async ({ 
   expect(result.pad.gold.bomb).toBe(true); expect(result.padHeld.gold.bomb).toBe(false);
 });
 
-test("production boxes appear and their countdown freezes while paused", async ({ page }) => {
+test("production boxes appear without a countdown and persist while paused", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#status")).toContainText("Choose a game mode");
   await page.keyboard.press("4");
-  await expect(page.locator("#status")).toContainText(/MYSTERY BOX · \d+s/, { timeout: 15000 });
+  await expect(page.locator("#status")).toContainText("MYSTERY BOX · REWARD OR MONSTER?", { timeout: 15000 });
   await page.keyboard.press("Escape");
   await expect(page.locator("#status")).toContainText("PAUSED");
   const paused = await page.locator("#status").textContent();
@@ -81,4 +81,16 @@ test("production boxes appear and their countdown freezes while paused", async (
   await page.screenshot({ path: test.info().outputPath("game-pickup.png"), fullPage: true });
   await page.keyboard.press("Escape");
   await expect(page.locator("#status")).not.toContainText("PAUSED");
+});
+
+test("an uncollected box remains after its former timeout without showing a countdown", async ({ page }) => {
+  await page.goto("/collision-lab.html?scenario=pickup-random");
+  await page.getByRole("button", { name: "+1 tick", exact: true }).click();
+  await expect(page.locator("#pickup-status")).toHaveText("MYSTERY BOX · REWARD OR MONSTER?");
+  for (let i = 0; i < 2; i++) await page.getByRole("button", { name: "+600", exact: true }).click();
+  await expect(page.locator("#pickup-status")).toHaveText("MYSTERY BOX · REWARD OR MONSTER?");
+  const hash = await page.locator("#hash").textContent();
+  await page.getByRole("slider", { name: "Replay recorded ticks" }).fill("0");
+  await page.getByRole("slider", { name: "Replay recorded ticks" }).fill("1201");
+  await expect(page.locator("#hash")).toHaveText(hash!);
 });

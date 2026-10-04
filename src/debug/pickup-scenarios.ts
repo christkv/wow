@@ -3,13 +3,13 @@ import { NEUTRAL_COMMAND, type PickupOutcome } from "../game/model";
 import { createWorld } from "../game/simulation";
 import { AUDIT_SEED, commands, type CollisionScenario } from "./collision-scenarios";
 
-export function pickupFixture(outcome: PickupOutcome, cursed = outcome === "brute") {
-  const w = createWorld({ mode: "alliance", seed: AUDIT_SEED, enemyCount: 3 });
+export function pickupFixture(outcome: PickupOutcome, cursed = outcome === "brute", friendlyFire = false) {
+  const w = createWorld({ mode: "alliance", seed: AUDIT_SEED, enemyCount: 3, friendlyFire });
   w.phase = "clear"; w.remainingChains = 0; w.maze = MAZES.pit;
   Object.assign(w.players.gold, { x: 232, y: 120, facing: "east", invulnerableTicks: 0 });
   Object.assign(w.players.cyan, { alive: false, lives: 0 });
   w.enemies.forEach((e, i) => Object.assign(e, { x: 328 + i * 48, y: 120, facing: "east", decisionTicks: 9999, fireCooldownTicks: 9999 }));
-  w.pickups.box = { x: 232, y: 120, kind: cursed ? "cursed" : "supply", outcome, ticks: 600 };
+  w.pickups.box = { x: 232, y: 120, kind: cursed ? "cursed" : "supply", outcome };
   w.pickups.nextSpawnTicks = 9999;
   return w;
 }
@@ -48,6 +48,50 @@ export const PICKUP_SCENARIOS: readonly CollisionScenario[] = [
     create: () => pickupFixture("piercing"), commands: () => commands()
   },
   {
+    id: "pickup-speed", title: "Pickups / double speed", pickup: true,
+    description: "Collect, then use manual movement to move twice as fast. Aim-only turns do not move you, and walls and gates still constrain the full character body.",
+    expected: "Eight seconds of double movement speed for the collector only. Bullet and enemy speeds stay unchanged.",
+    create: () => pickupFixture("speed"), commands: () => commands()
+  },
+  {
+    id: "pickup-rapid", title: "Pickups / rapid fire", pickup: true,
+    description: "Collect, then Run to see automatic rapid fire down the lane. In the game, hold F / Space or the controller's fire button. Stop firing by releasing it.",
+    expected: "One normal-speed shot every six ticks, with up to four live shots. Expiration restores ordinary press-to-fire behavior.",
+    create: () => pickupFixture("rapid"), commands: () => ({ ...commands(), gold: { ...NEUTRAL_COMMAND, fireHeld: true } })
+  },
+  {
+    id: "pickup-crossfire", title: "Pickups / crossfire", pickup: true,
+    description: "Collect, then Fire once: four bolts leave in the cardinal directions. Aim from a junction to cover several corridors.",
+    expected: "One four-way volley at a time, at normal bullet speed. Walls stop each bolt independently.",
+    create: () => pickupFixture("crossfire"), commands: () => commands()
+  },
+  {
+    id: "pickup-burst", title: "Pickups / burst", pickup: true,
+    description: "One press fires three shots, six ticks apart. Advance +10 then +1 twice to inspect the burst. Movement is allowed, but the burst keeps its initial aim.",
+    expected: "Three shots per press without increasing bullet speed. Expiration or death cancels pending shots; pause and replay preserve timing.",
+    create: () => pickupFixture("burst"), commands: () => commands()
+  },
+  {
+    id: "pickup-ricochet", title: "Pickups / ricochet", pickup: true,
+    description: "Collect, then Fire once at the wall ahead. Bolts reverse on wall contact twice, then stop. Two live bolts are allowed.",
+    expected: "Bounces stay on the floor side of walls. Bolts last at most three seconds, and never hit their owner.",
+    create: () => {
+      const w = pickupFixture("ricochet");
+      const walls = w.maze.walls.map(r => [...r]); walls[7]![16] = true; walls[7]![11] = true;
+      w.maze = { ...w.maze, walls }; return w;
+    }, commands: () => commands()
+  },
+  ...([true, false] as const).map(friendlyFire => ({
+    id: `friendly-fire-${friendlyFire ? "on" : "off"}`, title: `Combat / friendly fire ${friendlyFire ? "on" : "off"}`, pickup: true,
+    description: "Gold faces Cyan in an open lane. Fire once and advance ten ticks to compare ally damage. All crates use the same hidden-outcome art.",
+    expected: friendlyFire ? "Cyan loses one life with a hit explosion. Alliance awards no points for ally kills." : "Gold's shots pass through Cyan harmlessly.",
+    create: () => {
+      const w = pickupFixture("crossfire", false, friendlyFire); w.pickups.box = null;
+      Object.assign(w.players.cyan, { alive: true, lives: 3, x: 264, y: 120, invulnerableTicks: 0 });
+      return w;
+    }, commands: () => commands()
+  })),
+  {
     id: "pickup-bomb", title: "Pickups / bomb and cover", pickup: true,
     description: "Gold collects a bomb. Use Detonate bomb: the nearby enemy above Gold is exposed; the enemy to the right is behind a wall. The blast spares players.",
     expected: "A 48-pixel blast damages exposed enemies and clears exposed hostile bullets. The wall protects the right-hand enemy.",
@@ -83,7 +127,7 @@ export const PICKUP_SCENARIOS: readonly CollisionScenario[] = [
   {
     id: "pickup-random", title: "Pickups / seeded random spawn", pickup: true,
     description: "The real first maze, with the initial spawn countdown shortened to one tick. Seeded location and outcome replay identically. Move Gold to collect.",
-    expected: "One box on reachable, empty floor, away from players and entry points. It vanishes after ten seconds if ignored.",
+    expected: "One box on reachable, empty floor, away from players and entry points. It stays until collected or the wave ends.",
     create: () => { const w = createWorld({ mode: "practice", seed: AUDIT_SEED }); w.phase = "clear"; w.pickups.nextSpawnTicks = 1; return w; },
     commands: () => ({ gold: NEUTRAL_COMMAND, cyan: NEUTRAL_COMMAND })
   }

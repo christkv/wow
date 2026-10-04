@@ -19,8 +19,24 @@ describe("settings persistence contract", () => {
       sfxVolume: 0.5,
       reducedFlash: true,
       highContrastRadar: true,
-      haptics: false
+      haptics: false,
+      friendlyFire: true,
+      randomMaps: false,
+      crtScanlines: false
     });
+  });
+
+  it("migrates existing saves with both new options off and rejects malformed flags", () => {
+    const old = normalizeSettings({ musicVolume: .75, haptics: false });
+    expect(old).toMatchObject({ musicVolume: .75, haptics: false, randomMaps: false, crtScanlines: false });
+    expect(normalizeSettings({ randomMaps: "yes", crtScanlines: 1 })).toMatchObject({ randomMaps: false, crtScanlines: false });
+    expect(normalizeSettings({ randomMaps: true, crtScanlines: true })).toMatchObject({ randomMaps: true, crtScanlines: true });
+  });
+
+  it("defaults friendly fire on, retains opt-out, and rejects malformed values", () => {
+    expect(normalizeSettings({}).friendlyFire).toBe(true);
+    expect(normalizeSettings({ friendlyFire: false }).friendlyFire).toBe(false);
+    expect(normalizeSettings({ friendlyFire: "false" }).friendlyFire).toBe(true);
   });
 
   it("cycles volume steps in both directions", () => {

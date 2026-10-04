@@ -55,6 +55,6 @@ describe("pixel impact effects", () => {
   it("all unopened box outcomes have identical player-facing status", () => {
     const statuses = [pickupFixture("twin"), pickupFixture("bomb"), pickupFixture("brute"), pickupFixture("piercing", true)].map(pickupStatus);
     expect(new Set(statuses).size).toBe(1);
-    expect(statuses[0]).toBe("MYSTERY BOX · 10s · REWARD OR MONSTER?");
+    expect(statuses[0]).toBe("MYSTERY BOX · REWARD OR MONSTER?");
   });
 });

@@ -153,6 +153,7 @@ export class BrowserInput {
       move: mergeDirection(firstDirection(profile, this.held), pad ? padDirection(pad) : null),
       bomb: pressedAny(profile.bomb, this.pressed) || padPressed(1),
       fire: pressedAny(profile.fire, this.pressed) || padPressed(0),
+      fireHeld: pressedAny(profile.fire, this.held) || Boolean(pad?.buttons[0]?.pressed),
       aim: pressedAny(profile.aim, this.held) || Boolean(pad?.buttons[2]?.pressed),
       pause: this.pressed.has("Escape") || this.pressed.has("KeyP") || padPressed(9)
     };

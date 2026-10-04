@@ -6,7 +6,7 @@ test("every unopened outcome renders the same pixel-art chest", async ({ page })
     await page.goto(`/collision-lab.html?scenario=${scenario}`);
     await page.waitForLoadState("networkidle");
     images.push(await page.locator("#maze").evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL()));
-    await expect(page.locator("#pickup-status")).toHaveText("MYSTERY BOX · 10s · REWARD OR MONSTER?");
+    await expect(page.locator("#pickup-status")).toHaveText("MYSTERY BOX · REWARD OR MONSTER?");
   }
   expect(images[1]).toBe(images[0]); expect(images[2]).toBe(images[0]);
   await page.screenshot({ path: test.info().outputPath("mystery-chest.png"), fullPage: true });

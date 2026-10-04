@@ -61,9 +61,9 @@ describe("deterministic simulation", () => {
     expect(world.players.gold.shotId).toBe(shotId);
   });
 
-  it("applies friendly fire in Classic but not Alliance", () => {
+  it("applies friendly fire in Classic and respects the Alliance opt-out", () => {
     const classic = createWorld({ mode: "classic", seed: 11, enemyCount: 1 });
-    const alliance = createWorld({ mode: "alliance", seed: 11, enemyCount: 1 });
+    const alliance = createWorld({ mode: "alliance", seed: 11, enemyCount: 1, friendlyFire: false });
     for (const world of [classic, alliance]) {
       world.phase = "clear";
       world.phaseTicks = 0;

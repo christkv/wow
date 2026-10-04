@@ -37,6 +37,7 @@ export function companionCommand(world: WorldState, id: PlayerId = "cyan"): Play
   return {
     move: clear ? aim : route?.direction ?? null,
     bomb: activeEffect(world, id, "bomb") && world.enemies.some(e => bombReaches(world, companion, e)),
+    fireHeld: clear,
     fire: clear && canPlayerFire(world, id) && world.tick % 18 === 0,
     aim: clear,
     pause: false

@@ -12,10 +12,18 @@ export const OBJECT_IMAGE_ASSETS = {
   "item-bomb": bomb, "item-shield": shield
 } as const;
 export const EFFECT_TEXTURE: Record<PickupEffectKind, keyof typeof OBJECT_IMAGE_ASSETS> = {
-  twin: "item-twin", piercing: "item-piercing", bomb: "item-bomb", shield: "item-shield"
+  twin: "item-twin", piercing: "item-piercing", bomb: "item-bomb", shield: "item-shield",
+  crossfire: "item-twin", burst: "item-twin", ricochet: "item-piercing", speed: "item-shield", rapid: "item-twin"
 };
 export const BOX_COLOR = 0x19dcff;
 export const BRUTE_TEXTURE = "ravager";
+/** Small square highlights keep powered bolts in the existing pixel-art language. */
+export function weaponPixels(kind: PickupEffectKind | undefined): readonly (readonly [number, number, number, number])[] {
+  if (kind === "crossfire") return [[-1, -4, 2, 8], [-4, -1, 8, 2]];
+  if (kind === "ricochet") return [[-3, -3, 6, 1], [-3, 2, 6, 1], [-3, -2, 1, 4], [2, -2, 1, 4]];
+  if (kind === "burst" || kind === "rapid") return [[-1, -1, 2, 2]];
+  return [];
+}
 export function bruteFrame(direction: Direction, tick: number, arriving: boolean): number {
   return { south: 0, east: 1, north: 2, west: 3 }[direction] * 4 + (arriving ? 0 : Math.floor(tick / 18) % 2);
 }

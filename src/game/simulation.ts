@@ -15,13 +15,13 @@ import {
   type WorldOptions,
   type WorldState
 } from "./model";
-import { mazeForDungeon } from "./mazes";
+import { createMapRotation, nextMaze } from "./map-rotation";
 
 import { ENEMY_RADIUS, PLAYER_RADIUS, PLAYER_SPEED, RIFTWING_RADIUS, RIFTWING_SPEED, isWall, nearestFloor, tryMove } from "./collision";
 import { navigationStep } from "./navigation";
 export { isWall } from "./collision";
 import { combatTuning, enemyShotLimit, successionChains } from "./combat";
-import { activeEffect, bombReaches, canPlayerFire, createPickups, damageBrute, resetPickups, updateBrute, updatePickups } from "./pickups";
+import { PICKUP_RULES, activeEffect, bombReaches, canPlayerFire, createPickups, damageBrute, resetPickups, updateBrute, updatePickups } from "./pickups";
 const PROJECTILE_RADIUS = 2.5;
 const ENTRY_TICKS = 60;
 const TRANSITION_TICKS = 120;
@@ -91,9 +91,12 @@ function populateEnemies(world: WorldState, count: number): void {
 
 export function createWorld(options: WorldOptions): WorldState {
   const seed = options.seed ?? 0x57_4f_52;
-  const maze = mazeForDungeon(1);
+  const mapRotation = createMapRotation(seed, options.randomMaps);
+  const maze = nextMaze(mapRotation, 1);
   const world: WorldState = {
     mode: options.mode,
+    mapRotation,
+    friendlyFire: options.friendlyFire ?? true,
     seed,
     combatProfile: options.combatProfile ?? "balanced",
     remainingChains: 0,
@@ -139,6 +142,8 @@ function spawnProjectile(
     y: y + vector.y * 8,
     direction,
     ttlTicks: 180,
+    ...(ownerType === "player" && world.pickups.effect?.owner === ownerId ? { weapon: world.pickups.effect.kind } : {}),
+    ...(ownerType === "player" && activeEffect(world, ownerId as PlayerId, "ricochet") ? { bouncesRemaining: PICKUP_RULES.ricochetBounces } : {}),
     ...(ownerType === "player" && activeEffect(world, ownerId as PlayerId, "piercing") ? { piercing: true, hitEnemyIds: [] } : {}),
     speed: ownerType === "player" ? combatTuning(world).playerSpeed
       : ownerType === "gaoler" ? combatTuning(world).gaolerSpeed
@@ -216,6 +221,15 @@ function clearFireBuffers(world: WorldState): void {
 
 function firePlayer(world: WorldState, state: PlayerState, events: GameEvent[]): void {
   const shot = spawnProjectile(world, "player", state.id, state.x, state.y, state.facing);
+  if (activeEffect(world, state.id, "crossfire")) {
+    for (const direction of ["north", "east", "south", "west"] as const) {
+      if (direction !== state.facing) spawnProjectile(world, "player", state.id, state.x, state.y, direction);
+    }
+  }
+  if (activeEffect(world, state.id, "burst")) {
+    world.pickups.effect!.burst = { remaining: 2, nextTick: world.tick + PICKUP_RULES.burstIntervalTicks, direction: state.facing };
+  }
+  if (activeEffect(world, state.id, "rapid")) world.pickups.effect!.rapidNextTick = world.tick + PICKUP_RULES.rapidIntervalTicks;
   state.shotId = shot.id;
   state.fireBufferUntil = 0;
   events.push({ type: "shot", x: state.x, y: state.y, player: state.id });
@@ -310,7 +324,7 @@ function updatePlayers(
       state.facing = command.move;
       if (!command.aim) {
         const beforeX = state.x;
-        tryMove(world.maze, state, command.move, PLAYER_SPEED, PLAYER_RADIUS, world.gateCooldownTicks === 0);
+        tryMove(world.maze, state, command.move, PLAYER_SPEED * (activeEffect(world, id, "speed") ? 2 : 1), PLAYER_RADIUS, world.gateCooldownTicks === 0);
         if (crossedGate(beforeX, state.x, world.maze)) {
           world.gateCooldownTicks = 180;
           events.push({ type: "gate", x: state.x, y: state.y, player: id });
@@ -320,9 +334,17 @@ function updatePlayers(
 
     if (world.phase === "entry" || world.phase === "transition") state.fireBufferUntil = 0;
     else {
+      const effect = world.pickups.effect;
+      if (effect?.owner === id && effect.burst && world.tick >= effect.burst.nextTick) {
+        const shot = spawnProjectile(world, "player", id, state.x, state.y, effect.burst.direction);
+        state.shotId = shot.id;
+        events.push({ type: "shot", x: state.x, y: state.y, player: id });
+        if (--effect.burst.remaining === 0) delete effect.burst;
+        else effect.burst.nextTick = world.tick + PICKUP_RULES.burstIntervalTicks;
+      }
       if (state.fireBufferUntil < world.tick) state.fireBufferUntil = 0;
       if (command.fire && combatTuning(world).bufferTicks > 0) state.fireBufferUntil = world.tick + combatTuning(world).bufferTicks;
-      if (canPlayerFire(world, state.id) && (command.fire || state.fireBufferUntil > 0)) firePlayer(world, state, events);
+      if (canPlayerFire(world, state.id) && (command.fire || state.fireBufferUntil > 0 || command.fireHeld && activeEffect(world, id, "rapid"))) firePlayer(world, state, events);
     }
   }
 }
@@ -377,6 +399,8 @@ function detonateBomb(world: WorldState, id: PlayerId, events: GameEvent[]): voi
   }
   const brute = world.pickups.brute;
   if (brute && bombReaches(world, origin, brute)) damageBrute(world, id, events);
+  const otherId = id === "gold" ? "cyan" : "gold";
+  if (world.friendlyFire && bombReaches(world, origin, world.players[otherId])) hitAlly(world, id, otherId, events);
   world.projectiles = world.projectiles.filter(p => p.ownerType === "player" || !bombReaches(world, origin, p));
   const cells: Vector[] = [];
   for (let y = 0; y < world.maze.height; y++) for (let x = 0; x < world.maze.width; x++) {
@@ -385,6 +409,12 @@ function detonateBomb(world: WorldState, id: PlayerId, events: GameEvent[]): voi
   }
   world.pickups.blast = { cells, ticks: 18 };
   events.push({ type: "bomb", x: origin.x, y: origin.y, player: id });
+}
+
+function hitAlly(world: WorldState, owner: PlayerId, target: PlayerId, events: GameEvent[]): void {
+  const wasAlive = world.players[target].alive;
+  hitPlayer(world, target, events, true);
+  if (world.mode === "classic" && wasAlive && !world.players[target].alive) world.players[owner].score += 1_000 * world.multiplier;
 }
 
 function transformEnemy(enemy: EnemyState): void {
@@ -419,14 +449,20 @@ function updateProjectiles(world: WorldState, events: GameEvent[]): void {
   const removed = new Set<number>();
   for (const projectile of world.projectiles) {
     projectile.ttlTicks -= 1;
-    const vector = DIRECTION_VECTOR[projectile.direction];
     const steps = 3;
     for (let step = 0; step < steps && !removed.has(projectile.id); step += 1) {
+      const vector = DIRECTION_VECTOR[projectile.direction];
+      const oldX = projectile.x, oldY = projectile.y;
       projectile.x += vector.x * projectile.speed / steps;
       projectile.y += vector.y * projectile.speed / steps;
       if (isWall(world.maze, projectile.x, projectile.y)) {
-        removed.add(projectile.id);
         events.push({ type: "wall-impact", x: projectile.x, y: projectile.y });
+        // A muzzle inside a wall must never tunnel through it or bounce behind it.
+        if ((projectile.bouncesRemaining ?? 0) > 0 && !isWall(world.maze, oldX, oldY)) {
+          projectile.x = oldX; projectile.y = oldY;
+          projectile.direction = ({ north: "south", south: "north", east: "west", west: "east" } as const)[projectile.direction];
+          projectile.bouncesRemaining!--;
+        } else removed.add(projectile.id);
       }
     }
     if (projectile.x < 0 || projectile.x >= world.maze.width * TILE_SIZE || projectile.y < 0 || projectile.y >= world.maze.height * TILE_SIZE) removed.add(projectile.id);
@@ -475,14 +511,12 @@ function updateProjectiles(world: WorldState, events: GameEvent[]): void {
         continue;
       }
 
-      if (world.mode === "classic") {
+      if (world.friendlyFire) {
         const otherId: PlayerId = owner.id === "gold" ? "cyan" : "gold";
         const other = world.players[otherId];
         if (other.alive && distanceSquared(projectile, other) <= 65) {
           removed.add(projectile.id);
-          const wasAlive = other.alive;
-          hitPlayer(world, otherId, events, true);
-          if (wasAlive && !other.alive) owner.score += 1_000 * world.multiplier;
+          hitAlly(world, owner.id, otherId, events);
         }
       }
     } else {
@@ -622,7 +656,7 @@ function beginTransition(world: WorldState, events: GameEvent[]): void {
 function startNextDungeon(world: WorldState, events: GameEvent[]): void {
   resetPickups(world);
   world.dungeon += 1;
-  world.maze = mazeForDungeon(world.dungeon);
+  world.maze = nextMaze(world.mapRotation, world.dungeon);
   world.multiplier = world.nextDouble ? 2 : 1;
   world.nextDouble = false;
   world.phase = "entry";

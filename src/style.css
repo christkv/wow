@@ -63,3 +63,21 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+/* Static scanlines: brighter phosphors compensate for the dark line pass.
+   Overlay never intercepts mouse/touch and follows the canvas, not letterboxing. */
+#game { position: relative; }
+#game[data-crt="on"] canvas { filter: brightness(1.3) saturate(1.08); }
+#game::after {
+  content: "";
+  display: none;
+  position: absolute;
+  left: var(--screen-left, 0px);
+  top: var(--screen-top, 0px);
+  width: var(--screen-width, 0px);
+  height: var(--screen-height, 0px);
+  pointer-events: none;
+  z-index: 10;
+  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0, 0, 0, .18) 3px, rgba(0, 0, 0, .18) 4px);
+}
+#game[data-crt="on"]::after { display: block; }

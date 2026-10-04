@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import "./style.css";
+import { loadSettings } from "./persistence/settings";
+import { applyDisplaySettings, installDisplayEffects } from "./presentation/display-settings";
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from "./game/model";
 import { AttractScene } from "./scenes/AttractScene";
 import { BootScene } from "./scenes/BootScene";
@@ -19,6 +21,7 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   scale: {
     mode: Phaser.Scale.FIT,
+    fullscreenTarget: "app",
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: LOGICAL_WIDTH,
     height: LOGICAL_HEIGHT
@@ -32,6 +35,8 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, AttractScene, GameScene]
 };
 
+applyDisplaySettings(loadSettings());
+const disposeDisplay = installDisplayEffects(document.getElementById("game")!);
 const game = new Phaser.Game(config);
 
-window.addEventListener("beforeunload", () => game.destroy(true));
+window.addEventListener("beforeunload", () => { disposeDisplay(); game.destroy(true); });

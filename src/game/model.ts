@@ -27,6 +27,7 @@ export const DIRECTION_VECTOR: Readonly<Record<Direction, Vector>> = {
 export interface PlayerCommand {
   readonly move: Direction | null;
   readonly fire: boolean;
+  readonly fireHeld?: boolean;
   readonly aim: boolean;
   readonly pause: boolean;
   readonly bomb?: boolean;
@@ -88,6 +89,8 @@ export interface ProjectileState {
   ttlTicks: number;
   readonly speed: number;
   readonly piercing?: boolean;
+  readonly weapon?: PickupEffectKind;
+  bouncesRemaining?: number;
   hitEnemyIds?: number[];
 }
 
@@ -107,18 +110,19 @@ export interface GaolerState {
   fireDirection: Direction | null;
 }
 
-export type PickupEffectKind = "twin" | "piercing" | "bomb" | "shield";
+export type PickupEffectKind = "twin" | "piercing" | "bomb" | "shield" | "crossfire" | "burst" | "ricochet" | "speed" | "rapid";
 export type PickupOutcome = PickupEffectKind | "brute";
 export interface PickupBox extends Vector {
   kind: "supply" | "cursed";
   outcome: PickupOutcome;
-  ticks: number;
 }
 export interface PickupEffect {
   kind: PickupEffectKind;
   owner: PlayerId;
   ticks: number;
   duration: number;
+  rapidNextTick?: number;
+  burst?: { remaining: number; nextTick: number; direction: Direction };
 }
 export interface BruteState {
   id: number;
@@ -139,10 +143,19 @@ export interface PickupState {
   blast: { cells: Vector[]; ticks: number } | null;
 }
 
+export interface MapRotation {
+  readonly enabled: boolean;
+  rngState: number;
+  remaining: number[];
+  previous: number | null;
+}
+
 export interface WorldState {
   readonly mode: GameMode;
   readonly seed: number;
   readonly combatProfile: CombatProfile;
+  readonly mapRotation: MapRotation;
+  readonly friendlyFire: boolean;
   remainingChains: number;
   pickups: PickupState;
   tick: number;
@@ -210,5 +223,7 @@ export interface WorldOptions {
   readonly seed?: number;
   readonly enemyCount?: number;
   readonly pickups?: boolean;
+  readonly randomMaps?: boolean;
+  readonly friendlyFire?: boolean;
   readonly combatProfile?: CombatProfile;
 }
