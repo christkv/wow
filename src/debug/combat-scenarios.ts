@@ -5,7 +5,7 @@ import { createWorld } from "../game/simulation";
 import { AUDIT_SEED, commands, type CollisionScenario } from "./collision-scenarios";
 
 function duel(profile: CombatProfile = "balanced", distance = 64, count = 1) {
-  const w = createWorld({ mode: "alliance", seed: AUDIT_SEED, combatProfile: profile, enemyCount: count });
+  const w = createWorld({ pickups: false, mode: "alliance", seed: AUDIT_SEED, combatProfile: profile, enemyCount: count });
   w.maze = MAZES.pit; w.phase = "clear"; w.remainingChains = 0;
   Object.assign(w.players.gold, { x: 200 + distance, y: 120, invulnerableTicks: 0, facing: "west" });
   Object.assign(w.players.cyan, { alive: false, lives: 0 });
@@ -46,7 +46,7 @@ export const COMBAT_SCENARIOS: readonly CollisionScenario[] = [
     id: "combat-succession", title: "Combat / first dungeon", combat: true,
     description: "Practice run with the real first maze and companion AI. Use Gold movement and Fire once to play. Compare Readable with Balanced to isolate staged succession.",
     expected: "Balanced removes the first five Prowlers. The final Prowler introduces one Veilmaw/Ravager chain, with a brief harmless arrival between forms.",
-    create: profile => { const w = createWorld({ mode: "practice", seed: AUDIT_SEED, combatProfile: profile }); w.phase = "clear"; return w; },
+    create: profile => { const w = createWorld({ pickups: false, mode: "practice", seed: AUDIT_SEED, combatProfile: profile }); w.phase = "clear"; return w; },
     commands: w => ({ gold: NEUTRAL_COMMAND, cyan: companionCommand(w) })
   }
 ];

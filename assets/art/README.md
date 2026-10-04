@@ -56,3 +56,11 @@ The title uses Press Start 2P, supplied under the SIL Open Font License in `../f
 ## Sources and reproduction
 
 The normalized production files are in `sprites/`, `tiles/`, `ui/`, `vfx/`, and `screens/`. Unmodified image-generation output is preserved in `source/generated/`. The complete prompt set is in [IMAGEGEN_PROMPTS.md](./IMAGEGEN_PROMPTS.md). Run `../../tools/asset_generation/split_atlases.sh` to rebuild individual cells.
+
+## Runtime pickup curation
+
+The mystery chest uses `tiles/cells/tile-r0-c2.png`; all rolls share that same art.
+The brute uses the existing Ravager atlas with slower animation and three health
+marks. Reward HUD icons use row 2 columns 4 (twin), 5 (piercing), 2 (bomb), and 3
+(shield). `src/presentation/art.ts` is the mapping shared by the game and lab.
+These reuse the production sources directly, without new generated derivatives.

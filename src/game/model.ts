@@ -29,6 +29,7 @@ export interface PlayerCommand {
   readonly fire: boolean;
   readonly aim: boolean;
   readonly pause: boolean;
+  readonly bomb?: boolean;
 }
 
 export const NEUTRAL_COMMAND: PlayerCommand = {
@@ -86,6 +87,8 @@ export interface ProjectileState {
   direction: Direction;
   ttlTicks: number;
   readonly speed: number;
+  readonly piercing?: boolean;
+  hitEnemyIds?: number[];
 }
 
 export interface RiftwingState {
@@ -104,11 +107,44 @@ export interface GaolerState {
   fireDirection: Direction | null;
 }
 
+export type PickupEffectKind = "twin" | "piercing" | "bomb" | "shield";
+export type PickupOutcome = PickupEffectKind | "brute";
+export interface PickupBox extends Vector {
+  kind: "supply" | "cursed";
+  outcome: PickupOutcome;
+  ticks: number;
+}
+export interface PickupEffect {
+  kind: PickupEffectKind;
+  owner: PlayerId;
+  ticks: number;
+  duration: number;
+}
+export interface BruteState {
+  id: number;
+  x: number;
+  y: number;
+  facing: Direction;
+  health: number;
+  arrivalTicks: number;
+  ticks: number;
+}
+export interface PickupState {
+  readonly enabled: boolean;
+  rngState: number;
+  nextSpawnTicks: number;
+  box: PickupBox | null;
+  effect: PickupEffect | null;
+  brute: BruteState | null;
+  blast: { cells: Vector[]; ticks: number } | null;
+}
+
 export interface WorldState {
   readonly mode: GameMode;
   readonly seed: number;
   readonly combatProfile: CombatProfile;
   remainingChains: number;
+  pickups: PickupState;
   tick: number;
   rngState: number;
   dungeon: number;
@@ -128,12 +164,22 @@ export interface WorldState {
 }
 
 export type GameEventType =
+  | "box-spawn"
+  | "box-collected"
+  | "effect-expired"
+  | "shield-hit"
+  | "bomb"
+  | "brute-arrive"
+  | "brute-hit"
+  | "brute-killed"
+  | "brute-expired"
   | "shot"
   | "enemy-shot"
   | "enemy-windup"
   | "gaoler-windup"
   | "wall-impact"
   | "enemy-hit"
+  | "enemy-killed"
   | "player-hit"
   | "friendly-fire"
   | "cloak"
@@ -156,11 +202,13 @@ export interface GameEvent {
   readonly y?: number;
   readonly player?: PlayerId;
   readonly value?: number;
+  readonly effect?: PickupOutcome;
 }
 
 export interface WorldOptions {
   readonly mode: GameMode;
   readonly seed?: number;
   readonly enemyCount?: number;
+  readonly pickups?: boolean;
   readonly combatProfile?: CombatProfile;
 }

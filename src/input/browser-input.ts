@@ -7,6 +7,7 @@ interface KeyProfile {
   readonly west: readonly string[];
   readonly fire: readonly string[];
   readonly aim: readonly string[];
+  readonly bomb: readonly string[];
 }
 
 interface HapticActuator {
@@ -22,7 +23,8 @@ const GOLD_KEYS: KeyProfile = {
   south: ["KeyS"],
   west: ["KeyA"],
   fire: ["KeyF", "Space"],
-  aim: ["KeyG"]
+  aim: ["KeyG"],
+  bomb: ["KeyE"]
 };
 
 const CYAN_KEYS: KeyProfile = {
@@ -31,7 +33,8 @@ const CYAN_KEYS: KeyProfile = {
   south: ["ArrowDown"],
   west: ["ArrowLeft"],
   fire: ["Slash", "Enter"],
-  aim: ["Period"]
+  aim: ["Period"],
+  bomb: ["ShiftRight"]
 };
 
 const CONTROL_KEYS = new Set([
@@ -148,6 +151,7 @@ export class BrowserInput {
     const padPressed = (index: number): boolean => Boolean(pad?.buttons[index]?.pressed && !previous[index]);
     return {
       move: mergeDirection(firstDirection(profile, this.held), pad ? padDirection(pad) : null),
+      bomb: pressedAny(profile.bomb, this.pressed) || padPressed(1),
       fire: pressedAny(profile.fire, this.pressed) || padPressed(0),
       aim: pressedAny(profile.aim, this.held) || Boolean(pad?.buttons[2]?.pressed),
       pause: this.pressed.has("Escape") || this.pressed.has("KeyP") || padPressed(9)

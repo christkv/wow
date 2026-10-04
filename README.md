@@ -19,6 +19,7 @@ Open <http://127.0.0.1:4173/>.
 | --- | --- | --- | --- |
 | Move / face | W A S D | Arrow keys | D-pad or left stick |
 | Fire | F or Space | Slash or Enter | South face button |
+| Detonate collected bomb | E | Right Shift | East face button (B / Circle) |
 | Aim without moving | G | Period | West face button |
 | Pause | Escape or P | Escape or P | Start/Menu |
 
@@ -131,3 +132,81 @@ npm run test:browser -- tests/browser/combat-lab.spec.ts --project=chromium
 
 Game rules run in a framework-independent fixed-tick simulation under `src/game/`. Phaser scenes render snapshots and translate browser input/audio into commands and effects. The simulation uses a seeded PRNG and can be regression-tested with deterministic world hashes.
 # wow
+
+## Mystery boxes
+
+Boxes now spawn during ordinary combat on reachable empty floor, at least 48 pixels
+from living players, 32 pixels from entry points, and 24 pixels from enemies. The
+first box appears after 6–10 seconds of combat. One box or active effect/encounter
+is allowed at a time; after it ends, the next box takes 8–12 seconds. Uncollected
+boxes disappear after 10 seconds. Items use a separate seeded random stream from
+enemy AI, so replay includes the same locations, rewards, and timers.
+
+Every unopened box has the same blue chest sprite, HUD label, and radar marker.
+Its internal roll stays hidden until collection. The existing odds are preserved:
+75% ordinary rewards, 12.5% longer rewards, and 12.5% brute encounters. Rewards
+choose equally between twin shot, piercing, bomb, and shield. Only the collector
+receives the benefit; both players face a summoned brute. In Solo, Cyan leaves
+boxes for Gold.
+- **Twin shot:** two simultaneous shots for 8 seconds, with unchanged speed and
+  no automatic firing. On expiration existing bullets finish, and the ordinary
+  one-shot limit resumes.
+- **Piercing:** for 8 seconds, new shots pass through enemies, hitting each entity
+  at most once, even across transformations. Walls and projectile collisions
+  still stop them. Already-fired bolts retain piercing until they expire.
+- **Bomb:** one manually detonated charge, usable for 10 seconds. Press E for Gold,
+  Right Shift for Cyan, or the controller's east face button. A 48-pixel blast
+  damages each exposed enemy once and clears exposed hostile bullets; walls
+  block it and all players are safe, including in Classic. It cannot skip all
+  transformation stages in a single hit.
+- **Shield:** absorbs one hit or expires after 8 seconds; absorbing a hit grants
+  half a second of invulnerability to escape contact.
+- **Longer rewards:** 12 seconds for weapons/shield; 15 seconds to use a bomb.
+- **Brute:** a corridor-sized armored hunter with three health, moving at 39 px/s.
+  A one-second harmless arrival precedes twelve seconds of pursuit. It cannot
+  shoot or cloak. Defeating it gives 1000 points (subject to the dungeon multiplier);
+  surviving is sufficient. If a safe summon location is unavailable, the pickup
+  grants a shield instead.
+
+Timers advance only on simulation ticks and freeze when paused. Death removes the
+collector's reward. Clearing the regular enemies dismisses boxes, effects, and the
+brute immediately, so the optional encounter never prevents the Riftwing chase.
+There are no boxes during entry, chase, boss, transition, or game-over phases.
+The HUD and radar identify the box location without revealing its type. After
+collection, the HUD shows the outcome and remaining effect/encounter time. The
+brute uses the animated Ravager art at corridor scale, with three health marks. Bomb cells show the wall-limited
+blast; reduced-flash mode lowers their intensity.
+
+Try <http://127.0.0.1:4173/collision-lab.html?scenario=pickup-twin> and select any
+of seven **Pickups /** scenarios or two **Effects /** scenarios. Outcomes are forced in the effect fixtures;
+**seeded random spawn** uses the production spawn logic. Fire once, Detonate bomb,
+manual movement, exact stepping, and replay all use the real simulation.
+Existing collision/combat comparisons disable random boxes to isolate their subject.
+
+```sh
+npm test -- tests/simulation/pickups.test.ts
+npm run test:browser -- tests/browser/pickups.spec.ts --project=chromium
+```
+
+Probabilities, durations, distances, and brute values are prototype tuning in
+`src/game/pickups.ts`. Automated checks cover fairness and consistency; playtesting
+is still needed to judge risk/reward balance and frequency.
+
+## Pixel art and impact particles
+
+Mystery chests reuse `tile-r0-c2.png` from the production maze atlas. Reward icons
+reuse the twin-bolt, radiant-bolt, bomb, and shield cells from the HUD atlas;
+`src/presentation/art.ts` curates these mappings. The brute shares the Ravager
+sprite sheet and directional animation at the same corridor scale. Game and lab
+use these same images with nearest-neighbor filtering. No outcome is revealed by
+box color, shape, HUD text, or radar color before collection.
+
+Enemy kills, player hits, brute kills, bombs, and smaller impacts emit colored
+pixel fragments. The pool is capped at 256 particles. These effects run on a
+separate fixed-tick presentation clock: pausing freezes them, replay reconstructs
+them, and rendering never consumes gameplay randomness. A final death burst can
+finish during game-over. Reduced FX lowers particle count, brightness, travel,
+size, and duration; there is no screen flash or camera shake.
+
+Use the lab's **Effects / enemy explosion** and **Effects / player hit** fixtures,
+plus **Reduced particles**, exact stepping, and replay to inspect the results.

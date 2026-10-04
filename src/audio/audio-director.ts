@@ -3,6 +3,15 @@ import type { GameEvent } from "../game/model";
 import type { GameSettings } from "../persistence/settings";
 
 const EVENT_CUES: Partial<Record<GameEvent["type"], string>> = {
+  "box-spawn": "reveal",
+  "box-collected": "riftwing-caught",
+  "shield-hit": "wall-impact",
+  bomb: "gaoler-hit",
+  "brute-arrive": "gaoler-arrive",
+  "brute-hit": "enemy-hit",
+  "brute-killed": "gaoler-hit",
+  "effect-expired": "cloak",
+  "brute-expired": "cloak",
   "enemy-shot": "enemy-shot",
   "enemy-windup": "reveal",
   "gaoler-windup": "reveal",
@@ -36,6 +45,7 @@ export class AudioDirector {
 
   public handle(events: readonly GameEvent[]): void {
     for (const event of events) {
+      if (event.type === "box-collected" && event.effect === "brute") continue;
       const key = event.type === "shot"
         ? event.player === "cyan" ? "shot-cyan" : "shot-gold"
         : EVENT_CUES[event.type];

@@ -1,14 +1,19 @@
 import "./collision-lab.css";
+import { OBJECT_IMAGE_ASSETS, EFFECT_TEXTURE, bruteFrame } from "../presentation/art";
+import { PixelEffects } from "../presentation/pixel-effects";
 import { AUDIT_SEED, COLLISION_SCENARIOS, collisionBodies, overlapsWall } from "./collision-scenarios";
 import { DIRECTION_VECTOR, TILE_SIZE, type CombatProfile, type Direction, type PlayerCommand, type PlayerId } from "../game/model";
 import { COMBAT_SCENARIOS } from "./combat-scenarios";
 import { COMBAT_PROFILES } from "../game/combat";
 import { stepWorld, worldHash } from "../game/simulation";
 
-const SCENARIOS = [...COLLISION_SCENARIOS, ...COMBAT_SCENARIOS];
+import { PICKUP_SCENARIOS } from "./pickup-scenarios";
+import { canPlayerFire, pickupStatus } from "../game/pickups";
+
+const SCENARIOS = [...COLLISION_SCENARIOS, ...COMBAT_SCENARIOS, ...PICKUP_SCENARIOS];
 const MAX_TICKS = 3600;
 document.querySelector<HTMLDivElement>("#lab")!.innerHTML = `
-  <header><div><div class="eyebrow">Worbound / developer tools</div><h1>Collision lab</h1><span>Combat &amp; movement scenarios</span></div><a href="./">Open game ↗</a></header>
+  <header><div><div class="eyebrow">Worbound / developer tools</div><h1>Collision lab</h1><span>Combat, pickups &amp; movement scenarios</span></div><a href="./">Open game ↗</a></header>
   <div class="layout">
     <aside>
       <label for="scenario">Scenario</label><select id="scenario"></select>
@@ -22,7 +27,7 @@ document.querySelector<HTMLDivElement>("#lab")!.innerHTML = `
     </aside>
     <section aria-label="Simulation">
       <div class="toolbar">
-        <button id="run">Run</button><button id="reset">Reset</button><button id="fire">Fire once</button>
+        <button id="run">Run</button><button id="reset">Reset</button><button id="fire">Fire once</button><button id="bomb">Detonate bomb</button>
         <button data-step="1">+1 tick</button><button data-step="10">+10</button><button data-step="60">+60</button><button data-step="600">+600</button>
         <label for="speed">Speed</label><select id="speed"><option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="1" selected>1×</option><option value="4">4×</option></select>
       </div>
@@ -31,11 +36,12 @@ document.querySelector<HTMLDivElement>("#lab")!.innerHTML = `
         <label><input id="boxes" type="checkbox" checked>Collision boxes</label>
         <label><input id="sprites" type="checkbox" checked>Sprites</label>
         <label><input id="bounds" type="checkbox">Sprite bounds</label>
+        <label><input id="reduced-fx" type="checkbox">Reduced particles</label>
         <label><input id="trails" type="checkbox" checked>Trails</label>
         <label for="control">Gold movement</label><select id="control"><option value="script">Scenario script</option><option value="idle">Idle</option><option>north</option><option>east</option><option>south</option><option>west</option></select>
       </div>
-      <p class="legend">Yellow = collision box · red = wall overlap · dashed gray = sprite bounds. Walls collide across their entire tile. Gold rings/arrows = firing warning; thin shots = friendly, diamonds = hostile.</p>
-      <div class="metrics"><span id="tick"></span><span id="phase"></span><span id="gate"></span><span id="overlap"></span><span id="hash"></span><span id="combat-status"></span></div>
+      <p class="legend">Yellow = collision box · red = wall overlap · dashed gray = sprite bounds. Walls collide across their entire tile. Gold rings/arrows = firing warning; thin shots = friendly, diamonds = hostile. Every blue chest hides its outcome until opened. Brute squares = remaining health. Pixel debris = cosmetic impacts.</p>
+      <div class="metrics"><span id="tick"></span><span id="phase"></span><span id="gate"></span><span id="overlap"></span><span id="hash"></span><span id="combat-status"></span><span id="pickup-status"></span><span id="particle-status"></span></div>
       <label for="timeline">Replay recorded ticks</label><div class="timeline"><input id="timeline" type="range" min="0" max="0" value="0"><output id="time">0 / 0</output></div>
       <p class="hint">Scrub backward to inspect contact. Stepping after rewinding branches the replay using the current controls. Reset restores the fixture; the lab stops after 3,600 ticks.</p>
       <div class="inspection"><div class="panel"><h2>Actor positions</h2><pre id="actors"></pre></div><div class="panel"><h2>Recent events</h2><pre id="events"></pre></div></div>
@@ -57,6 +63,7 @@ let accumulator = 0;
 type Commands = Record<PlayerId, PlayerCommand>;
 let history: Commands[] = [];
 let events: string[] = [];
+const fx = new PixelEffects();
 let trails = new Map<string, Array<{ x: number; y: number }>>();
 const canvas = element<HTMLCanvasElement>("maze");
 const ctx = canvas.getContext("2d")!;
@@ -66,6 +73,10 @@ for (const [path, url] of Object.entries(spriteUrls)) {
   const sheet = new Image(); sheet.src = url;
   sheets.set(path.split("/").pop()!.replace(".png", ""), sheet);
   sheet.onload = () => render();
+}
+const objectImages = new Map<string, HTMLImageElement>();
+for (const [key, url] of Object.entries(OBJECT_IMAGE_ASSETS)) {
+  const img = new Image(); img.src = url; img.onload = () => render(); objectImages.set(key, img);
 }
 const enabled = (id: string): boolean => element<HTMLInputElement>(id).checked;
 
@@ -81,20 +92,23 @@ function recordPositions(): void {
 }
 
 function apply(input: Commands): void {
+  fx.advance();
   const result = stepWorld(world, input);
+  fx.emit(result, enabled("reduced-fx"));
   elapsed++;
   for (const event of result) events.push(`${elapsed}: ${event.type}${event.player ? ` (${event.player})` : ""}`);
   events = events.slice(-20);
   recordPositions();
 }
 
-function step(count: number, fireOnce = false): void {
+function step(count: number, fireOnce = false, bombOnce = false): void {
   history = history.slice(0, elapsed);
   for (let i = 0; i < count && elapsed < MAX_TICKS; i++) {
     const input = scenario.commands(world, Math.round(Number(element<HTMLInputElement>("reaction").value) * 60 / 1000));
     const control = element<HTMLSelectElement>("control").value;
     if (control !== "script") input.gold = { ...input.gold, move: control === "idle" ? null : control as Direction, aim: false };
     if (fireOnce && i === 0) input.gold = { ...input.gold, fire: true };
+    if (bombOnce && i === 0) input.gold = { ...input.gold, bomb: true };
     history.push(structuredClone(input));
     apply(input);
   }
@@ -103,7 +117,7 @@ function step(count: number, fireOnce = false): void {
 }
 
 function reset(): void {
-  pause(); world = scenario.create(profile); elapsed = 0; history = []; events = []; trails = new Map();
+  pause(); fx.clear(); world = scenario.create(profile); elapsed = 0; history = []; events = []; trails = new Map();
   element<HTMLSelectElement>("control").value = "script";
   select.value = scenario.id;
   element<HTMLSelectElement>("profile").disabled = !scenario.combat;
@@ -112,7 +126,7 @@ function reset(): void {
   element("tuning").textContent = `Shots: player ${tuning.playerSpeed * 60} px/s; enemies ${tuning.enemySpeeds.map(s => s * 60).join(" / ")} px/s. Warning ${tuning.warnings.map(t => Math.round(t / 60 * 1000)).join(" / ")} ms.`;
   element("description").textContent = scenario.description;
   element("expected").textContent = scenario.expected;
-  element("badge").textContent = scenario.combat ? "Combat comparison" : scenario.regression ? "Regression check" : "Collision baseline";
+  element("badge").textContent = scenario.pickup ? "Pickup experiment" : scenario.combat ? "Combat comparison" : scenario.regression ? "Regression check" : "Collision baseline";
   const url = new URL(location.href); url.searchParams.set("scenario", scenario.id); if (scenario.combat) url.searchParams.set("profile", profile); else url.searchParams.delete("profile");
   window.history.replaceState(null, "", url);
   element<HTMLAnchorElement>("permalink").href = url.toString();
@@ -146,8 +160,10 @@ function render(): void {
     const sheet = sheets.get(b.sprite), size = b.displaySize;
     if (enabled("sprites") && sheet?.complete && sheet.naturalWidth) {
       const row = { south: 0, east: 1, north: 2, west: 3 }[b.facing];
-      const col = b.sprite.startsWith("delver") ? 1 + Math.floor(world.tick / 8) % 2 : Math.floor(world.tick / 10) % 2;
+      if (b.id === "brute") ctx.globalAlpha = world.pickups.brute!.arrivalTicks > 0 ? .35 : 1;
+      const col = b.id === "brute" ? bruteFrame(b.facing, world.tick, world.pickups.brute!.arrivalTicks !== 0) % 4 : b.sprite.startsWith("delver") ? 1 + Math.floor(world.tick / 8) % 2 : Math.floor(world.tick / 10) % 2;
       ctx.drawImage(sheet, col * 64, row * 64, 64, 64, b.x - size / 2, b.y - size / 2, size, size);
+      ctx.globalAlpha = 1;
     }
     if (enabled("bounds")) {
       ctx.strokeStyle = "#b0bfd199"; ctx.lineWidth = .5; ctx.setLineDash([2, 2]);
@@ -180,9 +196,41 @@ function render(): void {
     if (p.ownerType === "player") ctx.fillRect(p.x - (v.x ? 3 : 1), p.y - (v.y ? 3 : 1), v.x ? 6 : 2, v.y ? 6 : 2);
     else { ctx.beginPath(); ctx.moveTo(p.x, p.y - 3); ctx.lineTo(p.x + 3, p.y); ctx.lineTo(p.x, p.y + 3); ctx.lineTo(p.x - 3, p.y); ctx.closePath(); ctx.fill(); }
   }
+  const { box, effect, brute, blast } = world.pickups;
+  const drawObject = (key: string, x: number, y: number, size: number): void => {
+    const img = objectImages.get(key);
+    if (img?.complete && img.naturalWidth) ctx.drawImage(img, Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+  };
+  if (box) {
+    drawObject("mystery-box", box.x, box.y, 14);
+    ctx.fillStyle = "#19dcff"; ctx.fillRect(box.x - 6, box.y + 8, Math.ceil(12 * box.ticks / 600), 1);
+  }
+  if (effect) {
+    const p = world.players[effect.owner]; drawObject(EFFECT_TEXTURE[effect.kind], p.x, p.y - 19, 10); ctx.strokeStyle = "#76e5cd"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#76e5cd"; ctx.fillRect(p.x - 6, p.y - 11, 12 * effect.ticks / effect.duration, 2);
+  }
+  if (brute) {
+    ctx.strokeStyle = "#f02dce"; ctx.lineWidth = 1;
+    if (brute.arrivalTicks) { ctx.beginPath(); ctx.arc(brute.x, brute.y, 7 + brute.arrivalTicks / 10, 0, Math.PI * 2); ctx.stroke(); }
+    else {
+      ctx.fillStyle = "#f02dce";
+      for (let i = 0; i < brute.health; i++) ctx.fillRect(brute.x - 5 + i * 4, brute.y - 9, 3, 2);
+    }
+  }
+  if (blast) for (const p of blast.cells) { ctx.fillStyle = `rgba(255,202,40,${.4 * blast.ticks / 18})`; ctx.fillRect(p.x - 7, p.y - 7, 14, 14); }
+  const particles = fx.pixels();
+  for (const p of particles) {
+    if (p.x < 0 || p.y < 0 || p.x >= maze.width * TILE_SIZE || p.y >= maze.height * TILE_SIZE) continue;
+    ctx.fillStyle = `#${p.color.toString(16).padStart(6, "0")}`; ctx.globalAlpha = p.alpha;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
   ctx.restore();
+  element("particle-status").textContent = `Particles: ${particles.length}`;
+  element("pickup-status").textContent = pickupStatus(world);
   const gold = world.players.gold;
-  element("combat-status").textContent = `Gold: ${gold.alive ? "alive" : "hit"} · ${gold.lives} lives · ${gold.shotId === null ? "ready" : gold.fireBufferUntil >= world.tick && gold.fireBufferUntil > 0 ? "queued" : "shot live"} · ${world.enemies.filter(e => e.fireDirection).length} charging · ${world.projectiles.length} shots · ${world.enemies.length} enemies`;
+  element("combat-status").textContent = `Gold: ${gold.alive ? "alive" : "hit"} · ${gold.lives} lives · ${canPlayerFire(world, "gold") ? "ready" : gold.fireBufferUntil >= world.tick && gold.fireBufferUntil > 0 ? "queued" : "shot live"} · ${world.enemies.filter(e => e.fireDirection).length} charging · ${world.projectiles.length} shots · ${world.enemies.length} enemies`;
   element("tick").textContent = `Tick ${elapsed} · ${(elapsed / 60).toFixed(2)}s`;
   element("phase").textContent = `Phase: ${world.phase}`;
   element("gate").textContent = `Gate: ${world.gateCooldownTicks ? `${world.gateCooldownTicks} ticks closed` : "open"}`;
@@ -200,7 +248,9 @@ select.addEventListener("change", () => { scenario = SCENARIOS.find(s => s.id ==
 element("run").addEventListener("click", () => {
   if (playing) pause(); else if (elapsed < MAX_TICKS) { playing = true; accumulator = 0; element("run").textContent = "Pause"; }
 });
+element("reduced-fx").addEventListener("change", reset);
 element("reset").addEventListener("click", reset);
+element("bomb").addEventListener("click", () => { pause(); step(1, false, true); });
 element("fire").addEventListener("click", () => { pause(); step(1, true); });
 element("profile").addEventListener("change", () => { profile = element<HTMLSelectElement>("profile").value as CombatProfile; reset(); });
 element("reaction").addEventListener("change", () => {
@@ -210,7 +260,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-step]").forEach(button => bu
 for (const id of ["boxes", "sprites", "bounds", "trails"]) element(id).addEventListener("change", render);
 element("timeline").addEventListener("input", () => {
   pause(); const target = Number(element<HTMLInputElement>("timeline").value);
-  world = scenario.create(profile); elapsed = 0; events = []; trails = new Map(); recordPositions();
+  fx.clear(); world = scenario.create(profile); elapsed = 0; events = []; trails = new Map(); recordPositions();
   for (let i = 0; i < target; i++) apply(history[i]!);
   render();
 });

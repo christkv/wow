@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { OBJECT_IMAGE_ASSETS } from "../presentation/art";
 import type { GameMode } from "../game/model";
 import { GAME_AUDIO_ASSETS, GAME_IMAGE_ASSETS } from "../runtime-assets";
 import { cycleVolume, loadSettings, saveSettings, type GameSettings } from "../persistence/settings";
@@ -71,7 +72,7 @@ export class AttractScene extends Phaser.Scene {
     this.add.text(320, 321, "↑↓ / A D SELECT   ENTER / FIRE START", {
       fontFamily: '"Press Start 2P", monospace', fontSize: "6px", color: "#54627a"
     }).setOrigin(0.5);
-    this.add.text(320, 343, "P1 WASD + F    P2 ARROWS + /    GAMEPADS SUPPORTED", {
+    this.add.text(320, 343, "P1 WASD F E-BOMB   P2 ARROWS / RSHIFT-BOMB   PAD A/B", {
       fontFamily: '"Press Start 2P", monospace', fontSize: "5px", color: "#19dcff"
     }).setOrigin(0.5);
     const fullscreen = this.add.text(624, 344, "[ X ] FULL", {
@@ -258,7 +259,7 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private queueGameAssets(): void {
-    this.assetsReady = Object.keys(GAME_IMAGE_ASSETS).every((key) => this.textures.exists(key))
+    this.assetsReady = Object.keys({ ...GAME_IMAGE_ASSETS, ...OBJECT_IMAGE_ASSETS }).every((key) => this.textures.exists(key))
       && Object.keys(GAME_AUDIO_ASSETS).every((key) => this.cache.audio.exists(key));
     if (this.assetsReady) {
       this.loadingText.setText("DUNGEON READY").setColor("#19dcff");
@@ -267,13 +268,16 @@ export class AttractScene extends Phaser.Scene {
     for (const [key, url] of Object.entries(GAME_IMAGE_ASSETS)) {
       if (!this.textures.exists(key)) this.load.spritesheet(key, url, { frameWidth: 64, frameHeight: 64 });
     }
+    for (const [key, url] of Object.entries(OBJECT_IMAGE_ASSETS)) {
+      if (!this.textures.exists(key)) this.load.image(key, url);
+    }
     for (const [key, urls] of Object.entries(GAME_AUDIO_ASSETS)) {
       if (!this.cache.audio.exists(key)) this.load.audio(key, [...urls]);
     }
     this.load.on("progress", (progress: number) => this.loadingText.setText(`LOADING DUNGEON ${Math.round(progress * 100)}%`));
     this.load.once("complete", () => {
       this.assetsReady = true;
-      for (const key of Object.keys(GAME_IMAGE_ASSETS)) this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      for (const key of Object.keys({ ...GAME_IMAGE_ASSETS, ...OBJECT_IMAGE_ASSETS })) this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
       this.loadingText.setText("DUNGEON READY").setColor("#19dcff");
       if (this.pendingStart) this.startSelected();
     });

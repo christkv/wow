@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { BOX_COLOR, BRUTE_TEXTURE, EFFECT_TEXTURE, bruteFrame } from "../presentation/art";
+import { PixelEffects } from "../presentation/pixel-effects";
 import { AudioDirector } from "../audio/audio-director";
 import { companionCommand } from "../game/ai";
 import {
@@ -15,6 +17,7 @@ import {
   type PlayerId,
   type WorldState
 } from "../game/model";
+import { canPlayerFire, pickupStatus } from "../game/pickups";
 import { createWorld, stepWorld } from "../game/simulation";
 import { BrowserInput } from "../input/browser-input";
 import { loadSettings, type GameSettings } from "../persistence/settings";
@@ -36,14 +39,6 @@ const COLOR = {
   gray: 0x54627a
 } as const;
 
-interface FxPulse {
-  x: number;
-  y: number;
-  color: number;
-  ticks: number;
-  maxTicks: number;
-}
-
 function textStyle(size: number, color = "#f4fbff"): Phaser.Types.GameObjects.Text.TextStyle {
   return { fontFamily: '"Press Start 2P", monospace', fontSize: `${size}px`, color };
 }
@@ -58,6 +53,8 @@ export class GameScene extends Phaser.Scene {
   private paused = false;
   private mazeGraphics!: Phaser.GameObjects.Graphics;
   private projectileGraphics!: Phaser.GameObjects.Graphics;
+  private pickupGraphics!: Phaser.GameObjects.Graphics;
+  private pickupText!: Phaser.GameObjects.Text;
   private radarGraphics!: Phaser.GameObjects.Graphics;
   private fxGraphics!: Phaser.GameObjects.Graphics;
   private objectiveText!: Phaser.GameObjects.Text;
@@ -69,7 +66,10 @@ export class GameScene extends Phaser.Scene {
   private enemySprites = new Map<number, Phaser.GameObjects.Sprite>();
   private riftwingSprite: Phaser.GameObjects.Sprite | null = null;
   private gaolerSprite: Phaser.GameObjects.Sprite | null = null;
-  private fx: FxPulse[] = [];
+  private readonly fx = new PixelEffects();
+  private boxSprite!: Phaser.GameObjects.Image;
+  private itemIcon!: Phaser.GameObjects.Image;
+  private bruteSprite!: Phaser.GameObjects.Sprite;
   private lastStatus = "";
   private readonly onVisibility = (): void => {
     if (document.hidden) this.setPaused(true);
@@ -91,7 +91,7 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites.clear();
     this.riftwingSprite = null;
     this.gaolerSprite = null;
-    this.fx = [];
+    this.fx.clear();
     this.world = createWorld({ mode: this.mode, seed: Date.now() & 0xffff_ffff });
     this.settings = loadSettings();
     this.browserInput = new BrowserInput();
@@ -102,15 +102,20 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(320, 174, 558, 270, COLOR.navy, 0.5).setStrokeStyle(1, COLOR.cobalt, 0.8);
     this.mazeGraphics = this.add.graphics();
     this.projectileGraphics = this.add.graphics();
-    this.fxGraphics = this.add.graphics();
+    this.fxGraphics = this.add.graphics().setDepth(5);
     this.radarGraphics = this.add.graphics();
+    this.pickupGraphics = this.add.graphics().setDepth(3);
+    this.pickupText = this.add.text(320, 354, "", textStyle(6, "#76e5cd")).setOrigin(0.5).setDepth(4);
 
     this.goldText = this.add.text(10, 10, "", textStyle(7, "#ffca28"));
     this.cyanText = this.add.text(630, 10, "", textStyle(7, "#19dcff")).setOrigin(1, 0);
     this.dungeonText = this.add.text(320, 9, "", textStyle(7, "#a9cbe8")).setOrigin(0.5, 0);
     this.objectiveText = this.add.text(320, 27, "", textStyle(7)).setOrigin(0.5, 0);
-    this.messageText = this.add.text(320, 330, "ESC / START PAUSE   R RESTART   M MENU", textStyle(5, "#54627a")).setOrigin(0.5);
+    this.messageText = this.add.text(320, 306, "ESC / START PAUSE   R RESTART   M MENU", textStyle(5, "#54627a")).setOrigin(0.5);
 
+    this.boxSprite = this.add.image(0, 0, "mystery-box").setDisplaySize(14, 14).setDepth(2).setVisible(false);
+    this.itemIcon = this.add.image(0, 0, "item-twin").setDisplaySize(12, 12).setDepth(4).setVisible(false);
+    this.bruteSprite = this.add.sprite(0, 0, BRUTE_TEXTURE, 0).setDisplaySize(ACTOR_DISPLAY_SIZE, ACTOR_DISPLAY_SIZE).setDepth(2).setVisible(false);
     this.createPlayerSprite("gold");
     this.createPlayerSprite("cyan");
     this.drawMaze();
@@ -140,6 +145,7 @@ export class GameScene extends Phaser.Scene {
       // BrowserInput already emits a one-tick press edge for keyboard and pads.
       if (pausePressed) this.setPaused(!this.paused);
 
+      if (!this.paused) this.fx.advance();
       if (this.world.phase === "game-over") {
         if (commands.gold.fire || commands.cyan.fire) this.restartRun();
       } else if (!this.paused) {
@@ -164,6 +170,7 @@ export class GameScene extends Phaser.Scene {
     this.syncEnemies();
     this.syncEncounterSprites();
     this.drawProjectiles();
+    this.drawPickups();
     this.drawRadar();
     this.drawFx();
     this.drawHud();
@@ -273,7 +280,7 @@ export class GameScene extends Phaser.Scene {
     const gaoler = this.world.gaoler;
     if (gaoler?.visible && gaoler.fireDirection && !gaoler.hasFired) this.drawCharge(graphics, gaoler.x, gaoler.y, gaoler.fireDirection);
     for (const player of Object.values(this.world.players)) {
-      if (!player.alive || player.shotId !== null) continue;
+      if (!player.alive || !canPlayerFire(this.world, player.id)) continue;
       graphics.fillStyle(player.id === "gold" ? COLOR.gold : COLOR.cyan, 0.9);
       graphics.fillRect(MAZE_X + player.x - 2, MAZE_Y + player.y + 9, 4, 1);
     }
@@ -295,6 +302,45 @@ export class GameScene extends Phaser.Scene {
         graphics.fillTriangle(x, y - 3, x + 3, y, x, y + 3);
         graphics.fillTriangle(x, y - 3, x - 3, y, x, y + 3);
       }
+    }
+  }
+
+  private drawPickups(): void {
+    const g = this.pickupGraphics;
+    g.clear();
+    const { box, effect, brute, blast } = this.world.pickups;
+    this.boxSprite.setVisible(Boolean(box));
+    this.bruteSprite.setVisible(Boolean(brute));
+    if (box) {
+      const x = MAZE_X + box.x, y = MAZE_Y + box.y;
+      this.boxSprite.setPosition(Math.round(x), Math.round(y));
+      g.fillStyle(BOX_COLOR, 1); g.fillRect(x - 6, y + 8, Math.ceil(12 * box.ticks / 600), 1);
+    }
+    if (effect) {
+      const owner = this.world.players[effect.owner], x = MAZE_X + owner.x, y = MAZE_Y + owner.y;
+      g.lineStyle(1, effect.kind === "shield" ? 0x76e5cd : COLOR.white, .9);
+      if (effect.kind === "shield") g.strokeCircle(x, y, 7);
+
+      g.fillStyle(effect.owner === "gold" ? COLOR.gold : COLOR.cyan, 1);
+      g.fillRect(x - 6, y - 10, 12 * effect.ticks / effect.duration, 2);
+    }
+    if (brute) {
+      const x = MAZE_X + brute.x, y = MAZE_Y + brute.y;
+      if (brute.arrivalTicks > 0) {
+        g.lineStyle(1, COLOR.magenta, 1); g.strokeCircle(x, y, 7 + brute.arrivalTicks / 10);
+        g.lineBetween(x - 5, y - 5, x + 5, y + 5); g.lineBetween(x + 5, y - 5, x - 5, y + 5);
+      } else {
+        g.fillStyle(COLOR.magenta, 1);
+        for (let i = 0; i < brute.health; i++) g.fillRect(x - 5 + i * 4, y - 9, 3, 2);
+      }
+      this.bruteSprite.setPosition(Math.round(x), Math.round(y));
+      this.bruteSprite.setFrame(bruteFrame(brute.facing, this.world.tick, brute.arrivalTicks > 0));
+      this.bruteSprite.setAlpha(brute.arrivalTicks > 0 ? .35 : 1);
+    }
+
+    if (blast) for (const cell of blast.cells) {
+      g.fillStyle(COLOR.gold, (this.settings.reducedFlash ? .15 : .4) * blast.ticks / 18);
+      g.fillRect(MAZE_X + cell.x - 7, MAZE_Y + cell.y - 7, 14, 14);
     }
   }
 
@@ -332,6 +378,8 @@ export class GameScene extends Phaser.Scene {
       const color = enemy.tier === 0 ? COLOR.cobalt : enemy.tier === 1 ? COLOR.gold : COLOR.scarlet;
       plot(enemy.x, enemy.y, color, enemy.tier + 1.5);
     }
+    if (this.world.pickups.box) plot(this.world.pickups.box.x, this.world.pickups.box.y, BOX_COLOR, 2);
+    if (this.world.pickups.brute) plot(this.world.pickups.brute.x, this.world.pickups.brute.y, COLOR.magenta, 3);
     if (this.world.riftwing) plot(this.world.riftwing.x, this.world.riftwing.y, COLOR.magenta, 2.5);
     if (this.world.gaoler?.visible) plot(this.world.gaoler.x, this.world.gaoler.y, COLOR.violet, 3);
     for (const id of ["gold", "cyan"] as const) {
@@ -342,12 +390,10 @@ export class GameScene extends Phaser.Scene {
 
   private drawFx(): void {
     this.fxGraphics.clear();
-    this.fx = this.fx.filter((pulse) => pulse.ticks > 0);
-    for (const pulse of this.fx) {
-      pulse.ticks -= 1;
-      const radius = 3 + (pulse.maxTicks - pulse.ticks) * 0.75;
-      this.fxGraphics.lineStyle(2, pulse.color, pulse.ticks / pulse.maxTicks);
-      this.fxGraphics.strokeCircle(MAZE_X + pulse.x, MAZE_Y + pulse.y, radius);
+    for (const p of this.fx.pixels()) {
+      if (p.x < 0 || p.y < 0 || p.x >= this.world.maze.width * TILE_SIZE || p.y >= this.world.maze.height * TILE_SIZE) continue;
+      this.fxGraphics.fillStyle(p.color, p.alpha);
+      this.fxGraphics.fillRect(MAZE_X + p.x, MAZE_Y + p.y, p.size, p.size);
     }
   }
 
@@ -372,8 +418,13 @@ export class GameScene extends Phaser.Scene {
     }
     else this.messageText.setText("ESC / START PAUSE   R RESTART   M MENU").setColor("#54627a");
 
+    const pickupMessage = pickupStatus(this.world);
+    this.pickupText.setText(pickupMessage).setColor(this.world.pickups.brute ? "#f02dce" : "#76e5cd");
+    const effect = this.world.pickups.effect;
+    this.itemIcon.setVisible(Boolean(effect));
+    if (effect) this.itemIcon.setTexture(EFFECT_TEXTURE[effect.kind]).setDisplaySize(12, 12).setPosition(320 - this.pickupText.width / 2 - 10, 354);
     const spokenObjective = this.paused ? "PAUSED" : this.world.objective;
-    const status = `${spokenObjective}. Dungeon ${this.world.dungeon}. Gold score ${gold.score}. Cyan score ${cyan.score}.`;
+    const status = `${spokenObjective}. Dungeon ${this.world.dungeon}. Gold score ${gold.score}. Cyan score ${cyan.score}. ${pickupMessage}.`;
     if (status !== this.lastStatus) {
       const element = document.querySelector<HTMLElement>("#status");
       if (element) element.textContent = status;
@@ -395,19 +446,7 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
-    for (const event of events) {
-      if (event.x === undefined || event.y === undefined) continue;
-      if (event.type === "enemy-windup" || event.type === "gaoler-windup") continue;
-      const color = event.player === "cyan"
-        ? COLOR.cyan
-        : event.player === "gold"
-          ? COLOR.gold
-          : event.type.startsWith("gaoler") ? COLOR.violet : event.type.startsWith("riftwing") ? COLOR.magenta : COLOR.scarlet;
-      if (!this.settings.reducedFlash || event.type === "player-hit" || event.type === "riftwing-caught" || event.type === "gaoler-arrive") {
-        const ticks = this.settings.reducedFlash ? 8 : 18;
-        this.fx.push({ x: event.x, y: event.y, color, ticks, maxTicks: ticks });
-      }
-    }
+    this.fx.emit(events, this.settings.reducedFlash);
     if (events.some((event) => event.type === "game-over")) this.saveHighScore();
   }
 

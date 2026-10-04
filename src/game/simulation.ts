@@ -21,6 +21,7 @@ import { ENEMY_RADIUS, PLAYER_RADIUS, PLAYER_SPEED, RIFTWING_RADIUS, RIFTWING_SP
 import { navigationStep } from "./navigation";
 export { isWall } from "./collision";
 import { combatTuning, enemyShotLimit, successionChains } from "./combat";
+import { activeEffect, bombReaches, canPlayerFire, createPickups, damageBrute, resetPickups, updateBrute, updatePickups } from "./pickups";
 const PROJECTILE_RADIUS = 2.5;
 const ENTRY_TICKS = 60;
 const TRANSITION_TICKS = 120;
@@ -96,6 +97,7 @@ export function createWorld(options: WorldOptions): WorldState {
     seed,
     combatProfile: options.combatProfile ?? "balanced",
     remainingChains: 0,
+    pickups: createPickups(seed, options.pickups ?? true),
     tick: 0,
     rngState: seed >>> 0 || 1,
     dungeon: 1,
@@ -137,18 +139,13 @@ function spawnProjectile(
     y: y + vector.y * 8,
     direction,
     ttlTicks: 180,
+    ...(ownerType === "player" && activeEffect(world, ownerId as PlayerId, "piercing") ? { piercing: true, hitEnemyIds: [] } : {}),
     speed: ownerType === "player" ? combatTuning(world).playerSpeed
       : ownerType === "gaoler" ? combatTuning(world).gaolerSpeed
       : combatTuning(world).enemySpeeds[world.enemies.find(enemy => enemy.id === ownerId)?.tier ?? 0]
   };
   world.projectiles.push(projectile);
   return projectile;
-}
-
-function releaseShotOwner(world: WorldState, projectile: ProjectileState): void {
-  if (projectile.ownerType !== "player") return;
-  const owner = world.players[projectile.ownerId as PlayerId];
-  if (owner.shotId === projectile.id) owner.shotId = null;
 }
 
 function nearestLivingPlayer(world: WorldState, position: Vector): PlayerState | null {
@@ -228,7 +225,7 @@ function flushFireBuffers(world: WorldState, events: GameEvent[]): void {
   if (world.phase === "entry" || world.phase === "transition" || world.phase === "game-over") { clearFireBuffers(world); return; }
   for (const state of Object.values(world.players)) {
     if (!state.alive || state.fireBufferUntil < world.tick) state.fireBufferUntil = 0;
-    if (state.alive && state.shotId === null && state.fireBufferUntil > 0) firePlayer(world, state, events);
+    if (state.alive && canPlayerFire(world, state.id) && state.fireBufferUntil > 0) firePlayer(world, state, events);
   }
 }
 
@@ -307,6 +304,7 @@ function updatePlayers(
       continue;
     }
 
+    if (command.bomb && world.phase === "clear" && activeEffect(world, id, "bomb")) detonateBomb(world, id, events);
     state.invulnerableTicks = Math.max(0, state.invulnerableTicks - 1);
     if (command.move) {
       state.facing = command.move;
@@ -324,7 +322,7 @@ function updatePlayers(
     else {
       if (state.fireBufferUntil < world.tick) state.fireBufferUntil = 0;
       if (command.fire && combatTuning(world).bufferTicks > 0) state.fireBufferUntil = world.tick + combatTuning(world).bufferTicks;
-      if (state.shotId === null && (command.fire || state.fireBufferUntil > 0)) firePlayer(world, state, events);
+      if (canPlayerFire(world, state.id) && (command.fire || state.fireBufferUntil > 0)) firePlayer(world, state, events);
     }
   }
 }
@@ -332,20 +330,61 @@ function updatePlayers(
 function hitPlayer(world: WorldState, id: PlayerId, events: GameEvent[], friendly = false): void {
   const target = world.players[id];
   if (!target.alive || target.invulnerableTicks > 0 || world.mode === "practice") return;
+  if (activeEffect(world, id, "shield")) {
+    world.pickups.effect = null;
+    target.invulnerableTicks = 30;
+    events.push({ type: "shield-hit", x: target.x, y: target.y, player: id });
+    return;
+  }
+  if (world.pickups.effect?.owner === id) world.pickups.effect = null;
   target.alive = false;
   target.fireBufferUntil = 0;
   target.lives -= 1;
   target.respawnTicks = 180;
-  if (target.shotId !== null) {
-    const shot = world.projectiles.find((projectile) => projectile.id === target.shotId);
-    if (shot) shot.ttlTicks = 0;
-    target.shotId = null;
+  for (const shot of world.projectiles) {
+    if (shot.ownerType === "player" && shot.ownerId === id) shot.ttlTicks = 0;
   }
+  target.shotId = null;
   events.push({ type: friendly ? "friendly-fire" : "player-hit", x: target.x, y: target.y, player: id });
   if (world.phase === "gaoler") {
     world.gaoler = null;
     beginTransition(world, events);
   }
+}
+
+function damageEnemy(world: WorldState, enemy: EnemyState, owner: PlayerState, events: GameEvent[]): void {
+  const points = [100, 200, 500][enemy.tier] ?? 100;
+  owner.score += points * world.multiplier;
+  events.push({ type: "enemy-hit", x: enemy.x, y: enemy.y, player: owner.id, value: points * world.multiplier });
+  const startsChain = enemy.tier === 0 && world.remainingChains > 0
+    && world.enemies.filter(candidate => candidate.tier === 0).length <= world.remainingChains;
+  if (enemy.tier === 1 || startsChain) {
+    if (startsChain) world.remainingChains--;
+    transformEnemy(enemy);
+    enemy.arrivalTicks = combatTuning(world).arrivalTicks;
+    events.push({ type: "transform", x: enemy.x, y: enemy.y });
+  } else {
+    world.enemies = world.enemies.filter((candidate) => candidate.id !== enemy.id);
+    events.push({ type: "enemy-killed", x: enemy.x, y: enemy.y, player: owner.id });
+  }
+}
+
+function detonateBomb(world: WorldState, id: PlayerId, events: GameEvent[]): void {
+  const origin = world.players[id];
+  world.pickups.effect = null;
+  for (const enemy of [...world.enemies]) {
+    if (enemy.arrivalTicks === 0 && bombReaches(world, origin, enemy)) damageEnemy(world, enemy, origin, events);
+  }
+  const brute = world.pickups.brute;
+  if (brute && bombReaches(world, origin, brute)) damageBrute(world, id, events);
+  world.projectiles = world.projectiles.filter(p => p.ownerType === "player" || !bombReaches(world, origin, p));
+  const cells: Vector[] = [];
+  for (let y = 0; y < world.maze.height; y++) for (let x = 0; x < world.maze.width; x++) {
+    const p = { x: (x + .5) * TILE_SIZE, y: (y + .5) * TILE_SIZE };
+    if (bombReaches(world, origin, p)) cells.push(p);
+  }
+  world.pickups.blast = { cells, ticks: 18 };
+  events.push({ type: "bomb", x: origin.x, y: origin.y, player: id });
 }
 
 function transformEnemy(enemy: EnemyState): void {
@@ -400,22 +439,19 @@ function updateProjectiles(world: WorldState, events: GameEvent[]): void {
     if (removed.has(projectile.id)) continue;
     if (projectile.ownerType === "player") {
       const owner = world.players[projectile.ownerId as PlayerId];
-      const enemy = world.enemies.find((candidate) => candidate.arrivalTicks === 0 && distanceSquared(projectile, candidate) <= (ENEMY_RADIUS + PROJECTILE_RADIUS) ** 2);
+      const enemy = world.enemies.find((candidate) => !projectile.hitEnemyIds?.includes(candidate.id) && candidate.arrivalTicks === 0 && distanceSquared(projectile, candidate) <= (ENEMY_RADIUS + PROJECTILE_RADIUS) ** 2);
       if (enemy) {
-        removed.add(projectile.id);
-        const points = [100, 200, 500][enemy.tier] ?? 100;
-        owner.score += points * world.multiplier;
-        events.push({ type: "enemy-hit", x: enemy.x, y: enemy.y, player: owner.id, value: points * world.multiplier });
-        const startsChain = enemy.tier === 0 && world.remainingChains > 0
-          && world.enemies.filter(candidate => candidate.tier === 0).length <= world.remainingChains;
-        if (enemy.tier === 1 || startsChain) {
-          if (startsChain) world.remainingChains--;
-          transformEnemy(enemy);
-          enemy.arrivalTicks = combatTuning(world).arrivalTicks;
-          events.push({ type: "transform", x: enemy.x, y: enemy.y });
-        } else {
-          world.enemies = world.enemies.filter((candidate) => candidate.id !== enemy.id);
-        }
+        if (!projectile.piercing) removed.add(projectile.id);
+        else projectile.hitEnemyIds!.push(enemy.id);
+        damageEnemy(world, enemy, owner, events);
+        continue;
+      }
+
+      const brute = world.pickups.brute;
+      if (brute && brute.arrivalTicks === 0 && !projectile.hitEnemyIds?.includes(brute.id) && distanceSquared(projectile, brute) <= (ENEMY_RADIUS + PROJECTILE_RADIUS) ** 2) {
+        if (!projectile.piercing) removed.add(projectile.id);
+        else projectile.hitEnemyIds!.push(brute.id);
+        damageBrute(world, owner.id, events);
         continue;
       }
 
@@ -461,10 +497,10 @@ function updateProjectiles(world: WorldState, events: GameEvent[]): void {
     }
   }
 
-  for (const projectile of world.projectiles) {
-    if (removed.has(projectile.id)) releaseShotOwner(world, projectile);
-  }
   world.projectiles = world.projectiles.filter((projectile) => !removed.has(projectile.id));
+  for (const state of Object.values(world.players)) {
+    state.shotId = world.projectiles.find(p => p.ownerType === "player" && p.ownerId === state.id)?.id ?? null;
+  }
 }
 
 function updateContacts(world: WorldState, events: GameEvent[]): void {
@@ -474,6 +510,8 @@ function updateContacts(world: WorldState, events: GameEvent[]): void {
     if (world.enemies.some((enemy) => enemy.arrivalTicks === 0 && distanceSquared(state, enemy) <= (PLAYER_RADIUS + ENEMY_RADIUS) ** 2)) {
       hitPlayer(world, id, events);
     }
+    const brute = world.pickups.brute;
+    if (brute && brute.arrivalTicks === 0 && distanceSquared(state, brute) <= (PLAYER_RADIUS + ENEMY_RADIUS) ** 2) hitPlayer(world, id, events);
     if (world.riftwing && distanceSquared(state, world.riftwing) <= 80) hitPlayer(world, id, events);
   }
 }
@@ -538,6 +576,7 @@ function updateGaoler(world: WorldState, events: GameEvent[]): void {
 }
 
 function startRiftwing(world: WorldState, events: GameEvent[]): void {
+  resetPickups(world);
   clearFireBuffers(world);
   world.phase = "riftwing";
   world.objective = "CATCH THE RIFTWING";
@@ -567,6 +606,7 @@ function beginGaolerOrTransition(world: WorldState, events: GameEvent[]): void {
 }
 
 function beginTransition(world: WorldState, events: GameEvent[]): void {
+  resetPickups(world);
   clearFireBuffers(world);
   world.phase = "transition";
   world.objective = world.nextDouble ? "NEXT DUNGEON ×2" : "DUNGEON CLEAR";
@@ -580,6 +620,7 @@ function beginTransition(world: WorldState, events: GameEvent[]): void {
 }
 
 function startNextDungeon(world: WorldState, events: GameEvent[]): void {
+  resetPickups(world);
   world.dungeon += 1;
   world.maze = mazeForDungeon(world.dungeon);
   world.multiplier = world.nextDouble ? 2 : 1;
@@ -625,6 +666,8 @@ export function stepWorld(
 
   world.tick += 1;
   world.gateCooldownTicks = Math.max(0, world.gateCooldownTicks - 1);
+  if (world.phase === "clear") updateBrute(world, events);
+  updatePickups(world, events);
   updatePlayers(world, commands, events);
 
   if (world.phase === "entry") {
@@ -651,6 +694,7 @@ export function stepWorld(
   if (world.phase === "clear" && world.enemies.length === 0) startRiftwing(world, events);
   if (shouldGameOver(world)) {
     clearFireBuffers(world);
+    resetPickups(world);
     world.phase = "game-over";
     world.objective = "RUN ENDED";
     world.projectiles = [];

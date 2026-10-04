@@ -17,13 +17,14 @@ export interface CollisionScenario {
   expected: string;
   regression?: boolean;
   combat?: boolean;
+  pickup?: boolean;
   create: (profile?: CombatProfile) => WorldState;
   commands: (world: WorldState, reactionTicks?: number) => Record<PlayerId, PlayerCommand>;
 }
 
 // Fixtures intentionally use the public simulation API. No replacement physics.
 export function fixtureWorld(maze: MazeDefinition = MAZES.pit, enemyCount = 0): WorldState {
-  const world = createWorld({ mode: "practice", seed: AUDIT_SEED, enemyCount });
+  const world = createWorld({ pickups: false, mode: "practice", seed: AUDIT_SEED, enemyCount });
   world.maze = maze;
   // Keep ordinary movement fixtures isolated from enemy AI and phase changes.
   world.phase = "entry";
@@ -128,6 +129,7 @@ export function collisionBodies(world: WorldState): CollisionBody[] {
     ...p, halfSize: PLAYER_RADIUS, sprite: `delver-${p.id}`, displaySize: ACTOR_DISPLAY_SIZE
   }));
   bodies.push(...world.enemies.map(e => ({ ...e, id: `enemy-${e.id}`, halfSize: ENEMY_RADIUS, sprite: e.kind, displaySize: ACTOR_DISPLAY_SIZE })));
+  if (world.pickups.brute) bodies.push({ ...world.pickups.brute, id: "brute", halfSize: ENEMY_RADIUS, sprite: "ravager", displaySize: ACTOR_DISPLAY_SIZE });
   if (world.riftwing) bodies.push({ ...world.riftwing, id: "riftwing", halfSize: RIFTWING_RADIUS, sprite: "riftwing", displaySize: ACTOR_DISPLAY_SIZE });
   return bodies;
 }
