@@ -43,6 +43,33 @@ The optimized static build is written to `dist/` and can be hosted by any HTTPS 
 
 Browser smoke tests require the Playwright browser packages (`npx playwright install`). CI installs Chromium automatically.
 
+## Publish to GitHub Pages
+
+Create the ready-to-publish directory locally:
+
+```sh
+npm ci
+npm run build
+```
+
+The complete site is in `dist/`: `index.html`, `collision-lab.html`, and `assets/`.
+Keep these files together when uploading the site. Asset URLs are relative, so the
+game works under the repository path (`/wow/`) as well as a domain root.
+Run `npm run preview` to check the build at <http://127.0.0.1:4173/>.
+
+To publish this repository, open **Settings → Pages → Build and deployment** and
+set **Source** to **GitHub Actions**. Push the changes to `main`, or run
+**Actions → Deploy web game → Run workflow**. The existing
+[deployment workflow](./.github/workflows/deploy-pages.yml) builds and uploads
+`dist/`, then deploys it to GitHub Pages. The deployment reports the live URL;
+for `christkv/wow`, it is <https://christkv.github.io/wow/> unless a custom domain
+is configured.
+
+`dist/` is generated and ignored by Git; it does not need to be committed.
+Rebuild it with `npm run build` after local changes. GitHub Actions builds a fresh
+copy for each deployment. See [GitHub's publishing source instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+for the Pages setting.
+
 ## Collision lab
 
 Run `npm run dev`, then open <http://127.0.0.1:4173/collision-lab.html>.
