@@ -22,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     fullscreenTarget: "app",
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
     width: LOGICAL_WIDTH,
     height: LOGICAL_HEIGHT
   },

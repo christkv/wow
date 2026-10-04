@@ -33,16 +33,6 @@ body {
     #03040b;
 }
 
-#app {
-  display: grid;
-  place-items: center;
-}
-
-#game {
-  display: grid;
-  place-items: center;
-}
-
 #game canvas {
   display: block;
   max-width: 100%;
