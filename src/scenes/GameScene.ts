@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import { BOX_COLOR, BRUTE_TEXTURE, EFFECT_TEXTURE, bruteFrame } from "../presentation/art";
 import { PixelEffects } from "../presentation/pixel-effects";
 import { AudioDirector } from "../audio/audio-director";
+import { ATTRACT_DEMO_MS, ATTRACT_IDLE_MS, UserActivity, type HeldInput } from "../input/user-activity";
+import { createDemoWorld, demoCommands } from "../game/demo";
 import { companionCommand } from "../game/ai";
 import {
   ACTOR_DISPLAY_SIZE,
@@ -44,6 +46,11 @@ function textStyle(size: number, color = "#f4fbff"): Phaser.Types.GameObjects.Te
 }
 
 export class GameScene extends Phaser.Scene {
+  private demo = false;
+  private demoCycle = 0;
+  private demoStartedAt = 0;
+  private leaving = false;
+  private activity!: UserActivity;
   private mode: GameMode = "solo";
   private world!: WorldState;
   private browserInput!: BrowserInput;
@@ -72,19 +79,28 @@ export class GameScene extends Phaser.Scene {
   private bruteSprite!: Phaser.GameObjects.Sprite;
   private lastStatus = "";
   private readonly onVisibility = (): void => {
-    if (document.hidden) this.setPaused(true);
+    if (document.hidden) { if (this.demo) this.finishDemo(); else this.setPaused(true); }
   };
-  private readonly onBlur = (): void => this.setPaused(true);
+  private readonly onBlur = (): void => { if (this.demo) this.finishDemo(); else this.setPaused(true); };
 
   public constructor() {
     super("Game");
   }
 
-  public init(data: { mode?: GameMode }): void {
+  public init(data: { mode?: GameMode; demo?: boolean; demoCycle?: number }): void {
+    this.demo = data.demo ?? false;
+    this.demoCycle = data.demoCycle ?? 0;
     this.mode = data.mode ?? "solo";
   }
 
   public create(): void {
+    this.leaving = false;
+    this.demoStartedAt = performance.now();
+    this.activity = new UserActivity(held => {
+      if (!this.demo || this.leaving) return false;
+      this.finishDemo(held); return true;
+    });
+    this.lastStatus = "";
     this.paused = false;
     this.accumulator = 0;
     this.playerSprites.clear();
@@ -92,11 +108,11 @@ export class GameScene extends Phaser.Scene {
     this.riftwingSprite = null;
     this.gaolerSprite = null;
     this.fx.clear();
-    this.world = createWorld({ mode: this.mode, seed: Date.now() & 0xffff_ffff });
+    this.world = this.demo ? createDemoWorld(this.demoCycle) : createWorld({ mode: this.mode, seed: Date.now() & 0xffff_ffff });
     this.settings = loadSettings();
     this.browserInput = new BrowserInput();
     this.audioDirector = new AudioDirector(this, this.settings);
-    this.audioDirector.startDungeonMusic();
+    if (!this.demo) this.audioDirector.startDungeonMusic();
 
     this.add.rectangle(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2, LOGICAL_WIDTH, LOGICAL_HEIGHT, COLOR.black);
     this.add.rectangle(320, 174, 558, 270, COLOR.navy, 0.5).setStrokeStyle(1, COLOR.cobalt, 0.8);
@@ -134,12 +150,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   public override update(_time: number, delta: number): void {
+    const idle = this.activity.idleMs();
+    if (this.leaving) return;
+    if (this.demo && performance.now() - this.demoStartedAt >= ATTRACT_DEMO_MS) { this.finishDemo(); return; }
+    if (!this.demo && this.world.phase === "game-over" && idle >= ATTRACT_IDLE_MS) { this.scene.start("Attract"); return; }
     this.accumulator += Math.min(delta, 100);
     let steps = 0;
     while (this.accumulator >= STEP_MS && steps < 5) {
-      const commands = this.browserInput.commands(this.mode);
-      if (this.mode === "solo") commands.cyan = companionCommand(this.world);
-      if (this.browserInput.consumeDisconnect()) this.setPaused(true);
+      const commands = this.demo ? demoCommands(this.world) : this.browserInput.commands(this.mode);
+      if (!this.demo && this.mode === "solo") commands.cyan = companionCommand(this.world);
+      if (!this.demo && this.browserInput.consumeDisconnect()) this.setPaused(true);
 
       const pausePressed = commands.gold.pause || commands.cyan.pause;
       // BrowserInput already emits a one-tick press edge for keyboard and pads.
@@ -147,7 +167,7 @@ export class GameScene extends Phaser.Scene {
 
       if (!this.paused) this.fx.advance();
       if (this.world.phase === "game-over") {
-        if (commands.gold.fire || commands.cyan.fire) this.restartRun();
+        if (!this.demo && (commands.gold.fire || commands.cyan.fire)) this.restartRun();
       } else if (!this.paused) {
         const events = stepWorld(this.world, commands);
         this.handleEvents(events);
@@ -404,7 +424,7 @@ export class GameScene extends Phaser.Scene {
     this.cyanText.setText(`${"◆".repeat(Math.max(0, cyan.lives))}  ${cyan.score.toString().padStart(6, "0")} CYAN`);
     const mazeTitle = this.world.maze.id === "pit-01" ? "THE PIT" : this.world.maze.id === "arena-01" ? "ARENA" : `DUNGEON ${this.world.dungeon}`;
     this.dungeonText.setText(`${mazeTitle}  ${this.world.multiplier === 2 ? "×2" : ""}`);
-    this.objectiveText.setText(this.paused ? "PAUSED" : this.world.objective);
+    this.objectiveText.setText(this.demo ? `DEMO PLAY — ${this.world.objective}` : this.paused ? "PAUSED" : this.world.objective);
     this.objectiveText.setColor(this.world.phase === "riftwing" ? "#f02dce" : this.world.phase === "gaoler" ? "#7540d8" : "#f4fbff");
     const waiting = (["gold", "cyan"] as const).find((id) => {
       const state = this.world.players[id];
@@ -418,13 +438,14 @@ export class GameScene extends Phaser.Scene {
     }
     else this.messageText.setText("ESC / START PAUSE   R RESTART   M MENU").setColor("#54627a");
 
+    if (this.demo) this.messageText.setText("DEMO — PRESS ANY KEY / BUTTON TO PLAY").setColor("#ffca28");
     const pickupMessage = pickupStatus(this.world);
     this.pickupText.setText(pickupMessage).setColor(this.world.pickups.brute ? "#f02dce" : "#76e5cd");
     const effect = this.world.pickups.effect;
     this.itemIcon.setVisible(Boolean(effect));
     if (effect) this.itemIcon.setTexture(EFFECT_TEXTURE[effect.kind]).setDisplaySize(12, 12).setPosition(320 - this.pickupText.width / 2 - 10, 354);
     const spokenObjective = this.paused ? "PAUSED" : this.world.objective;
-    const status = `${spokenObjective}. Dungeon ${this.world.dungeon}. Gold score ${gold.score}. Cyan score ${cyan.score}. ${pickupMessage}.`;
+    const status = `${this.demo ? "DEMO PLAY. Press any key or button to return to the title. " : ""}${spokenObjective}. Dungeon ${this.world.dungeon}. Gold score ${gold.score}. Cyan score ${cyan.score}. ${pickupMessage}.`;
     if (status !== this.lastStatus) {
       const element = document.querySelector<HTMLElement>("#status");
       if (element) element.textContent = status;
@@ -433,8 +454,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleEvents(events: readonly GameEvent[]): void {
-    this.audioDirector.handle(events);
-    if (this.settings.haptics) {
+    if (!this.demo) this.audioDirector.handle(events);
+    if (!this.demo && this.settings.haptics) {
       for (const event of events) {
         if ((event.type === "player-hit" || event.type === "friendly-fire") && event.player) {
           this.browserInput.rumble(event.player, 180, 0.75, 0.3);
@@ -447,10 +468,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.fx.emit(events, this.settings.reducedFlash);
-    if (events.some((event) => event.type === "game-over")) this.saveHighScore();
+    if (events.some((event) => event.type === "game-over")) {
+      this.activity.reset();
+      if (!this.demo) this.saveHighScore();
+      else this.demoStartedAt = Math.min(this.demoStartedAt, performance.now() - ATTRACT_DEMO_MS + 2000);
+    }
   }
 
   private saveHighScore(): void {
+    if (this.demo) return;
     try {
       const key = "worbound.scores.v1";
       const current = JSON.parse(localStorage.getItem(key) ?? "{}") as Record<string, number>;
@@ -472,7 +498,15 @@ export class GameScene extends Phaser.Scene {
     this.scene.restart({ mode: this.mode });
   }
 
+  private finishDemo(held: HeldInput = {}): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.scene.start("Attract", { fromDemo: true, held });
+  }
+
   private cleanup(): void {
+    this.activity.destroy();
+    this.input.keyboard?.removeAllListeners();
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("blur", this.onBlur);
     this.browserInput.destroy();

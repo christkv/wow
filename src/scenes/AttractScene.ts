@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ATTRACT_IDLE_MS, UserActivity, type HeldInput } from "../input/user-activity";
 import { OBJECT_IMAGE_ASSETS } from "../presentation/art";
 import type { GameMode } from "../game/model";
 import { GAME_AUDIO_ASSETS, GAME_IMAGE_ASSETS } from "../runtime-assets";
@@ -20,6 +21,22 @@ const MODES: readonly ModeOption[] = [
 
 export class AttractScene extends Phaser.Scene {
   private selected = 0;
+  private activity!: UserActivity;
+  private controlsArmed = true;
+  private wakeHeld: HeldInput = {};
+  private demoHint!: Phaser.GameObjects.Text;
+  private demoCycle = 0;
+  private readonly onPadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button): void => {
+    if (!this.controlsArmed) return;
+    this.activity.reset();
+    if (button.index === 12) this.navigateVertical(-1);
+    else if (button.index === 13) this.navigateVertical(1);
+    else if (button.index === 14) this.navigateHorizontal(-1);
+    else if (button.index === 15) this.navigateHorizontal(1);
+    else if (button.index === 0 || button.index === 9) this.activateSelection();
+    else if (button.index === 1 && this.settingsOpen) this.toggleSettings();
+    else if (button.index === 3) this.toggleSettings();
+  };
   private modeTexts: Phaser.GameObjects.Text[] = [];
   private detailText!: Phaser.GameObjects.Text;
   private music: Phaser.Sound.BaseSound | null = null;
@@ -37,7 +54,13 @@ export class AttractScene extends Phaser.Scene {
     super("Attract");
   }
 
+  public init(data: { fromDemo?: boolean; held?: HeldInput } = {}): void {
+    this.controlsArmed = !data.fromDemo;
+    this.wakeHeld = data.held ?? {};
+  }
+
   public create(): void {
+    this.activity = new UserActivity(undefined, this.wakeHeld);
     this.leaving = false;
     this.pendingStart = false;
     this.settingsOpen = false;
@@ -52,6 +75,9 @@ export class AttractScene extends Phaser.Scene {
       fontFamily: '"Press Start 2P", monospace', fontSize: "10px", color: "#f4fbff"
     }).setOrigin(0.5);
 
+    this.demoHint = this.add.text(320, 227, "", {
+      fontFamily: '"Press Start 2P", monospace', fontSize: "5px", color: "#19dcff"
+    }).setOrigin(0.5);
     this.modeTexts = MODES.map((option, index) => {
       const x = 90 + index * 153;
       const text = this.add.text(x, 249, option.title, {
@@ -103,6 +129,8 @@ export class AttractScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-D", () => this.navigateHorizontal(1));
     this.input.keyboard?.on("keydown-ENTER", () => this.activateSelection());
     this.input.keyboard?.on("keydown-SPACE", () => this.activateSelection());
+    this.input.keyboard?.on("keydown-F", () => this.activateSelection());
+    this.input.keyboard?.on("keydown-FORWARD_SLASH", () => this.activateSelection());
     this.input.keyboard?.on("keydown-ONE", () => { if (!this.settingsOpen) this.startMode(0); });
     this.input.keyboard?.on("keydown-TWO", () => { if (!this.settingsOpen) this.startMode(1); });
     this.input.keyboard?.on("keydown-THREE", () => { if (!this.settingsOpen) this.startMode(2); });
@@ -110,18 +138,32 @@ export class AttractScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-X", () => this.toggleFullscreen());
     this.input.keyboard?.on("keydown-O", () => this.toggleSettings());
     this.input.keyboard?.on("keydown-ESC", () => { if (this.settingsOpen) this.toggleSettings(); });
-    this.input.gamepad?.on("down", (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
-      if (button.index === 12) this.navigateVertical(-1);
-      else if (button.index === 13) this.navigateVertical(1);
-      else if (button.index === 14) this.navigateHorizontal(-1);
-      else if (button.index === 15) this.navigateHorizontal(1);
-      else if (button.index === 0 || button.index === 9) this.activateSelection();
-      else if (button.index === 1 && this.settingsOpen) this.toggleSettings();
-      else if (button.index === 3) this.toggleSettings();
+    this.input.gamepad?.on("down", this.onPadDown);
+    this.events.once("shutdown", () => {
+      this.activity.destroy();
+      this.input.keyboard?.removeAllListeners();
+      this.input.gamepad?.off("down", this.onPadDown);
+      this.load.off("progress");
+      this.load.off("complete");
+      this.music?.destroy(); this.music = null;
     });
   }
 
+  public override update(): void {
+    const idle = this.activity.idleMs();
+    if (!this.controlsArmed && !this.activity.held()) this.controlsArmed = true;
+    if (!this.assetsReady || this.settingsOpen || this.pendingStart || !this.controlsArmed || this.leaving) {
+      this.activity.reset(); this.demoHint.setText(""); return;
+    }
+    this.demoHint.setText(`AUTOPLAY DEMO IN ${Math.max(0, Math.ceil((ATTRACT_IDLE_MS - idle) / 1000))}s`);
+    if (idle >= ATTRACT_IDLE_MS) {
+      this.leaving = true;
+      this.scene.start("Game", { demo: true, demoCycle: this.demoCycle++ });
+    }
+  }
+
   private navigateVertical(direction: -1 | 1): void {
+    if (!this.controlsArmed || this.leaving) return;
     if (this.settingsOpen) {
       this.settingsIndex = (this.settingsIndex + direction + 6) % 6;
       this.refreshSettingsPanel();
@@ -131,11 +173,13 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private navigateHorizontal(direction: -1 | 1): void {
+    if (!this.controlsArmed || this.leaving) return;
     if (this.settingsOpen) this.adjustSetting(direction);
     else this.select(this.selected + direction);
   }
 
   private activateSelection(): void {
+    if (!this.controlsArmed || this.leaving) return;
     if (this.settingsOpen) {
       if (this.settingsIndex === 5) this.toggleSettings();
       else this.adjustSetting(1);
@@ -145,6 +189,7 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private select(index: number): void {
+    if (!this.controlsArmed || this.leaving) return;
     this.selected = (index + MODES.length) % MODES.length;
     this.refreshSelection();
     if (this.cache.audio.exists("ui-move")) this.sound.play("ui-move", { volume: 0.25 });
@@ -162,11 +207,13 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private startMode(index: number): void {
+    if (!this.controlsArmed || this.leaving) return;
     this.selected = index;
     this.startSelected();
   }
 
   private startSelected(): void {
+    if (!this.controlsArmed || this.leaving) return;
     if (this.leaving) return;
     const option = MODES[this.selected];
     if (!option) return;
@@ -181,6 +228,7 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private toggleFullscreen(): void {
+    if (!this.controlsArmed || this.leaving) return;
     if (this.scale.isFullscreen) this.scale.stopFullscreen();
     else this.scale.startFullscreen();
   }
@@ -212,6 +260,7 @@ export class AttractScene extends Phaser.Scene {
   }
 
   private toggleSettings(): void {
+    if (!this.controlsArmed || this.leaving) return;
     this.settingsOpen = !this.settingsOpen;
     this.settingsPanel.setVisible(this.settingsOpen);
     if (this.settingsOpen) {

@@ -1,4 +1,4 @@
-import { DIRECTION_VECTOR, NEUTRAL_COMMAND, TILE_SIZE, type Direction, type PlayerCommand, type WorldState } from "./model";
+import { DIRECTION_VECTOR, NEUTRAL_COMMAND, TILE_SIZE, type Direction, type PlayerCommand, type PlayerId, type WorldState } from "./model";
 import { PLAYER_RADIUS, PLAYER_SPEED, isWall } from "./collision";
 import { activeEffect, bombReaches, canPlayerFire } from "./pickups";
 import { navigationStep } from "./navigation";
@@ -8,8 +8,8 @@ function cardinalToward(dx: number, dy: number): Direction {
   return dy > 0 ? "south" : "north";
 }
 
-export function companionCommand(world: WorldState): PlayerCommand {
-  const companion = world.players.cyan;
+export function companionCommand(world: WorldState, id: PlayerId = "cyan"): PlayerCommand {
+  const companion = world.players[id];
   if (!companion.alive || world.phase === "entry" || world.phase === "transition") return NEUTRAL_COMMAND;
 
   const target = world.gaoler?.visible
@@ -36,8 +36,8 @@ export function companionCommand(world: WorldState): PlayerCommand {
   const route = clear ? null : navigationStep(world.maze, companion, target, PLAYER_RADIUS, PLAYER_SPEED, world.gateCooldownTicks === 0);
   return {
     move: clear ? aim : route?.direction ?? null,
-    bomb: activeEffect(world, "cyan", "bomb") && world.enemies.some(e => bombReaches(world, companion, e)),
-    fire: clear && canPlayerFire(world, "cyan") && world.tick % 18 === 0,
+    bomb: activeEffect(world, id, "bomb") && world.enemies.some(e => bombReaches(world, companion, e)),
+    fire: clear && canPlayerFire(world, id) && world.tick % 18 === 0,
     aim: clear,
     pause: false
   };

@@ -210,3 +210,26 @@ size, and duration; there is no screen flash or camera shake.
 
 Use the lab's **Effects / enemy explosion** and **Effects / player hit** fixtures,
 plus **Reduced particles**, exact stepping, and replay to inspect the results.
+
+## Arcade attract mode
+
+Leave the mode screen untouched for **20 seconds** to start a **30-second gameplay
+demo**. Both Delvers use the real AI, simulation, sprites, pickups and particles.
+The title and demo repeat automatically, rotating through three deterministic seeds.
+A finished demo run returns early after a short game-over beat.
+
+Any key, pointer movement/click/touch, wheel, controller button, or deliberate stick
+movement returns to the title. That first input only dismisses the demo; release it
+before making a menu selection. Held controls keep the idle timer reset; small stick
+drift is ignored. The mode selection is preserved between title/demo cycles.
+
+Autoplay waits for assets to finish loading, stays off while Options is open, and
+resets its idle countdown when the page loses visibility/focus. Leaving the tab during
+a demo returns it to the title. Active and paused player runs are never replaced by
+a demo. A completed player run returns to the title after 20 seconds without input.
+
+Demos are silent, disable rumble, and never save high scores or settings. Normal
+runs retain their existing audio and score behavior. Scene shutdown removes activity
+listeners and title music so repeated cycles do not stack handlers or sound loops.
+Timing constants live in `src/input/user-activity.ts`; demo worlds and two-player
+AI commands live in `src/game/demo.ts`.
